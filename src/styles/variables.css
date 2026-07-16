@@ -1,1 +1,7 @@
-:root { --canvas:#fafafb; --ink:#211f2b; --muted:#797486; --line:#e9e7ef; --primary:#7054bf; }
+:root {
+  --canvas: #fafafb;
+  --ink: #211f2b;
+  --muted: #797486;
+  --line: #e9e7ef;
+  --primary: #7054bf;
+}

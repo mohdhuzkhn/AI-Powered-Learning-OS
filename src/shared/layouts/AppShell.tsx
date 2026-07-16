@@ -1,4 +1,70 @@
-import { NavLink, Outlet } from 'react-router-dom'
-import { useAuth } from '../../hooks/useAuth'
-const navigation = [{ label: 'Overview', icon: '⌂', to: '/dashboard' }, { label: 'Missions', icon: '◈', to: '/missions' }, { label: 'Submissions', icon: '↗', to: '/submissions' }, { label: 'Resources', icon: '▤', to: '/resources' }]
-export function AppShell() { const { user, setDemoRole } = useAuth(); return <div className="app-shell"><aside className="sidebar"><div className="brand"><span className="brand-mark">L</span><span>Learning OS</span></div><nav>{navigation.map((item) => <NavLink key={item.label} to={item.to} className={({ isActive }) => `nav-link ${isActive ? 'active' : ''}`}><span>{item.icon}</span>{item.label}</NavLink>)}</nav><div className="sidebar-bottom"><span className="demo-label">Preview as</span><div className="role-toggle"><button className={user?.role === 'student' ? 'selected' : ''} onClick={() => setDemoRole('student')}>Student</button><button className={user?.role === 'admin' ? 'selected' : ''} onClick={() => setDemoRole('admin')}>Admin</button></div><div className="profile"><div className="avatar">{user?.name[0]}</div><div><strong>{user?.name}</strong><small>{user?.role}</small></div></div></div></aside><section className="main-area"><header className="topbar"><span className="breadcrumb">Workspace / {user?.role === 'admin' ? 'Admin' : 'Student'}</span><button className="notification" aria-label="Notifications">◔</button></header><main className="page-content"><Outlet /></main></section></div> }
+import { NavLink, Outlet } from 'react-router-dom';
+import { useAuth } from '../../hooks/useAuth';
+const navigation = [
+  { label: 'Overview', icon: '⌂', to: '/dashboard' },
+  { label: 'Missions', icon: '◈', to: '/missions' },
+  { label: 'Submissions', icon: '↗', to: '/submissions' },
+  { label: 'Resources', icon: '▤', to: '/resources' },
+];
+export function AppShell() {
+  const { user, setDemoRole } = useAuth();
+  return (
+    <div className="app-shell">
+      <aside className="sidebar">
+        <div className="brand">
+          <span className="brand-mark">L</span>
+          <span>Learning OS</span>
+        </div>
+        <nav>
+          {navigation.map((item) => (
+            <NavLink
+              key={item.label}
+              to={item.to}
+              className={({ isActive }) => `nav-link ${isActive ? 'active' : ''}`}
+            >
+              <span>{item.icon}</span>
+              {item.label}
+            </NavLink>
+          ))}
+        </nav>
+        <div className="sidebar-bottom">
+          <span className="demo-label">Preview as</span>
+          <div className="role-toggle">
+            <button
+              className={user?.role === 'student' ? 'selected' : ''}
+              onClick={() => setDemoRole('student')}
+            >
+              Student
+            </button>
+            <button
+              className={user?.role === 'admin' ? 'selected' : ''}
+              onClick={() => setDemoRole('admin')}
+            >
+              Admin
+            </button>
+          </div>
+          <div className="profile">
+            <div className="avatar">{user?.name[0]}</div>
+            <div>
+              <strong>{user?.name}</strong>
+              <small>{user?.role}</small>
+            </div>
+          </div>
+        </div>
+      </aside>
+      <section className="main-area">
+        <header className="topbar">
+          <span className="breadcrumb">
+            Workspace / {user?.role === 'admin' ? 'Admin' : 'Student'}
+          </span>
+          <button className="notification" aria-label="Notifications">
+            ◔
+          </button>
+        </header>
+        <main className="page-content">
+          <Outlet />
+        </main>
+      </section>
+    </div>
+  );
+}
