@@ -11,3 +11,5 @@ For every coding session:
 7. Summarize completed work.
 8. Suggest the next task.
 9. Stop and wait for approval.
+
+After completing an approved engineering task, follow .ai/GIT_WORKFLOW.md before considering the task finished.
