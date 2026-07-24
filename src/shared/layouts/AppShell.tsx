@@ -7,7 +7,14 @@ const navigation = [
   { label: 'Resources', icon: '▤', to: '/resources' },
 ];
 export function AppShell() {
-  const { user, setDemoRole } = useAuth();
+  const { user, signOut } = useAuth();
+
+  const handleSignOut = () => {
+    signOut().catch((error: unknown) => {
+      console.error('Failed to sign out', error);
+    });
+  };
+
   return (
     <div className="app-shell">
       <aside className="sidebar">
@@ -28,21 +35,6 @@ export function AppShell() {
           ))}
         </nav>
         <div className="sidebar-bottom">
-          <span className="demo-label">Preview as</span>
-          <div className="role-toggle">
-            <button
-              className={user?.role === 'student' ? 'selected' : ''}
-              onClick={() => setDemoRole('student')}
-            >
-              Student
-            </button>
-            <button
-              className={user?.role === 'admin' ? 'selected' : ''}
-              onClick={() => setDemoRole('admin')}
-            >
-              Admin
-            </button>
-          </div>
           <div className="profile">
             <div className="avatar">{user?.fullName[0]}</div>
             <div>
@@ -50,6 +42,9 @@ export function AppShell() {
               <small>{user?.role}</small>
             </div>
           </div>
+          <button className="sign-out-button" onClick={handleSignOut}>
+            Sign out
+          </button>
         </div>
       </aside>
       <section className="main-area">
