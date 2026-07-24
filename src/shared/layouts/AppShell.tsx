@@ -44,9 +44,9 @@ export function AppShell() {
             </button>
           </div>
           <div className="profile">
-            <div className="avatar">{user?.name[0]}</div>
+            <div className="avatar">{user?.fullName[0]}</div>
             <div>
-              <strong>{user?.name}</strong>
+              <strong>{user?.fullName}</strong>
               <small>{user?.role}</small>
             </div>
           </div>
