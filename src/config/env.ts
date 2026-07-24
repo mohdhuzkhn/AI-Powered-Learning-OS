@@ -13,3 +13,6 @@ export const hasFirebaseConfiguration = () =>
   Boolean(
     env.firebase.apiKey && env.firebase.authDomain && env.firebase.projectId && env.firebase.appId,
   );
+
+// console.log('Firebase Config Loaded:', env.firebase);
+// console.log('Has Config:', hasFirebaseConfiguration());

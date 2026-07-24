@@ -19,6 +19,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   // auth state changes instead of racing to resolve the profile twice.
   useEffect(() => {
     const unsubscribe = AuthService.onAuthStateChanged((nextUser) => {
+      console.log("AUTH CALLBACK", nextUser);
       setUser(nextUser);
       setIsLoading(false);
     });
