@@ -3,7 +3,16 @@ import { DashboardPage } from '../features/dashboard';
 import { AppShell } from '../shared/layouts/AppShell';
 import { ProtectedRoute } from './ProtectedRoute';
 function LoginPage() {
-  return <Navigate to="/dashboard" replace />;
+  // Temporary placeholder — no redirect, no auth UI yet (that's the next
+  // task). The previous version redirected to /dashboard, which combined
+  // with ProtectedRoute redirecting unauthenticated users back to /login
+  // caused an infinite render loop ("Maximum update depth exceeded").
+  return (
+    <main className="page-content">
+      <h1>Login</h1>
+      <p>Authentication is not implemented yet.</p>
+    </main>
+  );
 }
 function NotFoundPage() {
   return (
