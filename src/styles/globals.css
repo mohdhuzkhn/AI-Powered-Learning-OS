@@ -79,33 +79,20 @@ a {
 .sidebar-bottom {
   margin-top: auto;
 }
-.demo-label {
-  display: block;
-  color: #777487;
-  font-size: 11px;
-  text-transform: uppercase;
-  letter-spacing: 0.09em;
-  padding: 0 10px 8px;
-}
-.role-toggle {
-  display: flex;
-  padding: 3px;
-  border-radius: 8px;
-  background: #292835;
-  margin: 0 4px 21px;
-}
-.role-toggle button {
-  flex: 1;
-  border: 0;
-  padding: 6px;
+.sign-out-button {
+  width: 100%;
+  margin-top: 14px;
+  border: 1px solid #3a3948;
   background: transparent;
-  color: #a7a5b3;
-  border-radius: 6px;
+  color: #b3b0c4;
+  border-radius: 8px;
+  padding: 9px;
   font-size: 12px;
+  font-weight: 650;
 }
-.role-toggle .selected {
+.sign-out-button:hover {
+  background: #2a2936;
   color: #fff;
-  background: #464359;
 }
 .profile {
   display: flex;
@@ -378,6 +365,158 @@ a {
 .error-state h1 {
   color: var(--ink);
 }
+.auth-page {
+  min-height: 100vh;
+  display: grid;
+  place-content: center;
+  padding: 24px;
+  background: var(--canvas);
+}
+.auth-card {
+  width: 380px;
+  max-width: 100%;
+  background: #fff;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  padding: 32px 28px;
+  box-shadow: 0 20px 45px -30px rgba(33, 31, 43, 0.35);
+}
+.auth-brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-weight: 700;
+  color: var(--ink);
+  margin-bottom: 22px;
+}
+.auth-brand .brand-mark {
+  width: 28px;
+  height: 28px;
+  display: grid;
+  place-content: center;
+  border-radius: 8px;
+  background: var(--primary);
+  color: #fff;
+  font-size: 14px;
+}
+.auth-card h1 {
+  font-size: 22px;
+  margin: 0 0 6px;
+  color: var(--ink);
+}
+.auth-subtitle {
+  margin: 0 0 20px;
+  color: var(--muted);
+  font-size: 13px;
+}
+.auth-error {
+  background: #fdecec;
+  border: 1px solid #f3c6c6;
+  color: #a4293d;
+  border-radius: 8px;
+  padding: 10px 12px;
+  font-size: 13px;
+  margin-bottom: 16px;
+}
+.auth-success {
+  background: #eaf7ee;
+  border: 1px solid #bfe4c9;
+  color: #1f7a3f;
+  border-radius: 8px;
+  padding: 10px 12px;
+  font-size: 13px;
+  margin-bottom: 16px;
+}
+.auth-google-button {
+  width: 100%;
+  border: 1px solid var(--line);
+  background: #fff;
+  color: var(--ink);
+  border-radius: 8px;
+  padding: 11px;
+  font-size: 13px;
+  font-weight: 650;
+}
+.auth-google-button:hover {
+  background: #f5f4f8;
+}
+.auth-google-button:disabled,
+.auth-submit-button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+.auth-divider {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: var(--muted);
+  font-size: 12px;
+  margin: 18px 0;
+}
+.auth-divider::before,
+.auth-divider::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: var(--line);
+}
+.auth-form {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.auth-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 13px;
+  color: var(--ink);
+}
+.auth-field input {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 10px 12px;
+  font-size: 14px;
+  font-family: inherit;
+}
+.auth-field input:focus {
+  outline: 2px solid var(--primary);
+  outline-offset: 1px;
+}
+.auth-field-error {
+  color: #a4293d;
+  font-size: 12px;
+}
+.auth-forgot-link {
+  align-self: flex-end;
+  font-size: 12px;
+  color: var(--primary);
+  font-weight: 600;
+  text-decoration: none;
+}
+.auth-forgot-link:hover {
+  text-decoration: underline;
+}
+.auth-submit-button {
+  border: 0;
+  background: var(--primary);
+  color: #fff;
+  border-radius: 8px;
+  padding: 12px;
+  font-size: 13px;
+  font-weight: 700;
+  box-shadow: 0 12px 24px -14px rgba(112, 84, 191, 0.7);
+}
+.auth-back-link {
+  display: inline-block;
+  margin-top: 18px;
+  font-size: 13px;
+  color: var(--muted);
+  text-decoration: none;
+}
+.auth-back-link:hover {
+  color: var(--ink);
+}
 @media (max-width: 860px) {
   .sidebar {
     width: 64px;
@@ -394,9 +533,7 @@ a {
   .nav-link span {
     font-size: 18px;
   }
-  .profile > div:not(.avatar),
-  .demo-label,
-  .role-toggle {
+  .profile > div:not(.avatar) {
     display: none;
   }
   .profile {
