@@ -1,0 +1,580 @@
+diff --git a/package.json b/package.json
+index 41c0b97..36df9f4 100644
+--- a/package.json
++++ b/package.json
+@@ -12,11 +12,14 @@
+     "preview": "vite preview"
+   },
+   "dependencies": {
++    "@hookform/resolvers": "^5.4.0",
+     "@tanstack/react-query": "^5.101.2",
+     "firebase": "^12.16.0",
+     "react": "^19.2.7",
+     "react-dom": "^19.2.7",
+-    "react-router-dom": "^7.18.1"
++    "react-hook-form": "^7.83.0",
++    "react-router-dom": "^7.18.1",
++    "zod": "^4.4.3"
+   },
+   "devDependencies": {
+     "@tailwindcss/vite": "^4.3.2",
+diff --git a/src/features/authentication/index.ts b/src/features/authentication/index.ts
+new file mode 100644
+index 0000000..e1fdc75
+--- /dev/null
++++ b/src/features/authentication/index.ts
+@@ -0,0 +1,2 @@
++export { LoginPage } from './pages/LoginPage';
++export { ForgotPasswordPage } from './pages/ForgotPasswordPage';
+diff --git a/src/features/authentication/pages/ForgotPasswordPage.tsx b/src/features/authentication/pages/ForgotPasswordPage.tsx
+new file mode 100644
+index 0000000..b8624b4
+--- /dev/null
++++ b/src/features/authentication/pages/ForgotPasswordPage.tsx
+@@ -0,0 +1,73 @@
++import { useState } from 'react';
++import { Link } from 'react-router-dom';
++import { useForm } from 'react-hook-form';
++import { zodResolver } from '@hookform/resolvers/zod';
++import { AuthError, AuthService } from '../services/AuthService';
++import {
++  forgotPasswordSchema,
++  type ForgotPasswordFormValues,
++} from '../validators/auth.validator';
++
++export function ForgotPasswordPage() {
++  const [isSent, setIsSent] = useState(false);
++  const [errorMessage, setErrorMessage] = useState<string | null>(null);
++
++  const {
++    register,
++    handleSubmit,
++    formState: { errors, isSubmitting },
++  } = useForm<ForgotPasswordFormValues>({ resolver: zodResolver(forgotPasswordSchema) });
++
++  const onSubmit = async (values: ForgotPasswordFormValues) => {
++    setErrorMessage(null);
++    try {
++      await AuthService.sendPasswordReset(values.email);
++      setIsSent(true);
++    } catch (error) {
++      setErrorMessage(error instanceof AuthError ? error.message : 'Unable to send reset email.');
++    }
++  };
++
++  return (
++    <main className="auth-page">
++      <div className="auth-card">
++        <div className="auth-brand">
++          <span className="brand-mark">L</span>
++          <span>Learning OS</span>
++        </div>
++        <h1>Reset your password</h1>
++        <p className="auth-subtitle">Enter your account email and we&apos;ll send you a reset link.</p>
++
++        {isSent ? (
++          <div className="auth-success" role="status">
++            If an account exists for that email, a reset link is on its way.
++          </div>
++        ) : (
++          <form
++            className="auth-form"
++            onSubmit={(event) => void handleSubmit(onSubmit)(event)}
++            noValidate
++          >
++            {errorMessage && (
++              <div className="auth-error" role="alert">
++                {errorMessage}
++              </div>
++            )}
++            <label className="auth-field">
++              <span>Email</span>
++              <input type="email" autoComplete="email" disabled={isSubmitting} {...register('email')} />
++              {errors.email && <small className="auth-field-error">{errors.email.message}</small>}
++            </label>
++            <button type="submit" className="auth-submit-button" disabled={isSubmitting}>
++              {isSubmitting ? 'Sending…' : 'Send reset link'}
++            </button>
++          </form>
++        )}
++
++        <Link to="/login" className="auth-back-link">
++          ← Back to sign in
++        </Link>
++      </div>
++    </main>
++  );
++}
+diff --git a/src/features/authentication/pages/LoginPage.tsx b/src/features/authentication/pages/LoginPage.tsx
+new file mode 100644
+index 0000000..5824df3
+--- /dev/null
++++ b/src/features/authentication/pages/LoginPage.tsx
+@@ -0,0 +1,113 @@
++import { useState } from 'react';
++import { Link, Navigate, useNavigate } from 'react-router-dom';
++import { useForm } from 'react-hook-form';
++import { zodResolver } from '@hookform/resolvers/zod';
++import { useAuth } from '../../../hooks/useAuth';
++import { loginSchema, type LoginFormValues } from '../validators/auth.validator';
++
++export function LoginPage() {
++  const { user, isLoading, authError, signInWithGoogle, signInWithEmail } = useAuth();
++  const navigate = useNavigate();
++  const [isGoogleSubmitting, setIsGoogleSubmitting] = useState(false);
++
++  const {
++    register,
++    handleSubmit,
++    formState: { errors, isSubmitting },
++  } = useForm<LoginFormValues>({ resolver: zodResolver(loginSchema) });
++
++  // Session check still in flight — avoid flashing the form then
++  // immediately redirecting once it resolves.
++  if (isLoading) {
++    return <div className="page-loader">Checking your session…</div>;
++  }
++
++  // Already signed in — nothing to do here.
++  if (user) {
++    return <Navigate to="/dashboard" replace />;
++  }
++
++  const handleGoogleSignIn = async () => {
++    setIsGoogleSubmitting(true);
++    try {
++      await signInWithGoogle();
++      navigate('/dashboard', { replace: true });
++    } catch {
++      // authError is already set by AuthProvider — nothing else to do.
++    } finally {
++      setIsGoogleSubmitting(false);
++    }
++  };
++
++  const onSubmit = async (values: LoginFormValues) => {
++    try {
++      await signInWithEmail(values.email, values.password);
++      navigate('/dashboard', { replace: true });
++    } catch {
++      // authError is already set by AuthProvider.
++    }
++  };
++
++  const busy = isGoogleSubmitting || isSubmitting;
++
++  return (
++    <main className="auth-page">
++      <div className="auth-card">
++        <div className="auth-brand">
++          <span className="brand-mark">L</span>
++          <span>Learning OS</span>
++        </div>
++        <h1>Welcome back</h1>
++        <p className="auth-subtitle">Sign in to continue your missions.</p>
++
++        {authError && (
++          <div className="auth-error" role="alert">
++            {authError}
++          </div>
++        )}
++
++        <button
++          type="button"
++          className="auth-google-button"
++          onClick={() => void handleGoogleSignIn()}
++          disabled={busy}
++        >
++          {isGoogleSubmitting ? 'Signing in…' : 'Continue with Google'}
++        </button>
++
++        <div className="auth-divider">
++          <span>or</span>
++        </div>
++
++        <form className="auth-form" onSubmit={(event) => void handleSubmit(onSubmit)(event)} noValidate>
++          <label className="auth-field">
++            <span>Email</span>
++            <input type="email" autoComplete="email" disabled={busy} {...register('email')} />
++            {errors.email && <small className="auth-field-error">{errors.email.message}</small>}
++          </label>
++
++          <label className="auth-field">
++            <span>Password</span>
++            <input
++              type="password"
++              autoComplete="current-password"
++              disabled={busy}
++              {...register('password')}
++            />
++            {errors.password && (
++              <small className="auth-field-error">{errors.password.message}</small>
++            )}
++          </label>
++
++          <Link to="/forgot-password" className="auth-forgot-link">
++            Forgot password?
++          </Link>
++
++          <button type="submit" className="auth-submit-button" disabled={busy}>
++            {isSubmitting ? 'Signing in…' : 'Sign in'}
++          </button>
++        </form>
++      </div>
++    </main>
++  );
++}
+diff --git a/src/features/authentication/services/AuthService.ts b/src/features/authentication/services/AuthService.ts
+index 9e4d5f7..ab888a4 100644
+--- a/src/features/authentication/services/AuthService.ts
++++ b/src/features/authentication/services/AuthService.ts
+@@ -56,7 +56,7 @@ function translateFirebaseError(error: unknown): AuthError {
+     case 'auth/network-request-failed':
+       return new AuthError('Network error. Check your connection and try again.', code);
+     default:
+-      return new AuthError('Unable to sign in. Please try again.', code);
++      return new AuthError('Something went wrong. Please try again.', code);
+   }
+ }
+ 
+@@ -159,10 +159,23 @@ export const AuthService = {
+     );
+   },
+ 
++  /**
++   * Sends a password reset email. Deliberately does not distinguish
++   * "email not found" from success — surfacing that difference lets an
++   * attacker enumerate which emails have accounts (OWASP user enumeration).
++   * The UI always shows the same "check your inbox" message either way.
++   */
+   async sendPasswordReset(email: string): Promise<void> {
+     try {
+       await sendPasswordResetEmail(requireAuth(), email);
+     } catch (error) {
++      const code =
++        typeof error === 'object' && error !== null && 'code' in error
++          ? String((error as { code: unknown }).code)
++          : '';
++      if (code === 'auth/user-not-found') {
++        return;
++      }
+       throw translateFirebaseError(error);
+     }
+   },
+diff --git a/src/features/authentication/validators/auth.validator.ts b/src/features/authentication/validators/auth.validator.ts
+new file mode 100644
+index 0000000..7fa0eaf
+--- /dev/null
++++ b/src/features/authentication/validators/auth.validator.ts
+@@ -0,0 +1,30 @@
++import { z } from 'zod';
++
++/**
++ * Matches the validation rules documented in
++ * docs/03-Features/01-Authentication.md — email required/valid/max 100
++ * chars, password 8–64 chars.
++ */
++export const loginSchema = z.object({
++  email: z
++    .string()
++    .min(1, 'Email is required.')
++    .max(100, 'Email must be 100 characters or fewer.')
++    .email('Enter a valid email address.'),
++  password: z
++    .string()
++    .min(8, 'Password must be at least 8 characters.')
++    .max(64, 'Password must be 64 characters or fewer.'),
++});
++
++export type LoginFormValues = z.infer<typeof loginSchema>;
++
++export const forgotPasswordSchema = z.object({
++  email: z
++    .string()
++    .min(1, 'Email is required.')
++    .max(100, 'Email must be 100 characters or fewer.')
++    .email('Enter a valid email address.'),
++});
++
++export type ForgotPasswordFormValues = z.infer<typeof forgotPasswordSchema>;
+diff --git a/src/providers/AuthProvider.tsx b/src/providers/AuthProvider.tsx
+index 0bc77de..4fe72e1 100644
+--- a/src/providers/AuthProvider.tsx
++++ b/src/providers/AuthProvider.tsx
+@@ -18,12 +18,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
+   // in AuthService for why this listener intentionally ignores those same
+   // auth state changes instead of racing to resolve the profile twice.
+   useEffect(() => {
+-    const unsubscribe = AuthService.onAuthStateChanged((nextUser) => {
+-      console.log("AUTH CALLBACK", nextUser);
+-      setUser(nextUser);
++    try {
++      const unsubscribe = AuthService.onAuthStateChanged((nextUser) => {
++        setUser(nextUser);
++        setIsLoading(false);
++      });
++      return unsubscribe;
++    } catch (error) {
++      // requireAuth() throws synchronously when Firebase isn't configured.
++      // Without this, isLoading would stay true forever with no visible
++      // explanation — ProtectedRoute would just spin indefinitely.
++      setAuthError(toMessage(error));
+       setIsLoading(false);
+-    });
+-    return unsubscribe;
++      return undefined;
++    }
+   }, []);
+ 
+   const signInWithGoogle = useCallback(async () => {
+diff --git a/src/router/AppRouter.tsx b/src/router/AppRouter.tsx
+index 3fd9dca..2d34c8b 100644
+--- a/src/router/AppRouter.tsx
++++ b/src/router/AppRouter.tsx
+@@ -1,19 +1,8 @@
+ import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom';
+ import { DashboardPage } from '../features/dashboard';
++import { ForgotPasswordPage, LoginPage } from '../features/authentication';
+ import { AppShell } from '../shared/layouts/AppShell';
+ import { ProtectedRoute } from './ProtectedRoute';
+-function LoginPage() {
+-  // Temporary placeholder — no redirect, no auth UI yet (that's the next
+-  // task). The previous version redirected to /dashboard, which combined
+-  // with ProtectedRoute redirecting unauthenticated users back to /login
+-  // caused an infinite render loop ("Maximum update depth exceeded").
+-  return (
+-    <main className="page-content">
+-      <h1>Login</h1>
+-      <p>Authentication is not implemented yet.</p>
+-    </main>
+-  );
+-}
+ function NotFoundPage() {
+   return (
+     <main className="error-state">
+@@ -27,6 +16,7 @@ export function AppRouter() {
+     <BrowserRouter>
+       <Routes>
+         <Route path="/login" element={<LoginPage />} />
++        <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+         <Route element={<ProtectedRoute />}>
+           <Route element={<AppShell />}>
+             <Route path="/dashboard" element={<DashboardPage />} />
+diff --git a/src/styles/globals.css b/src/styles/globals.css
+index 2989fcd..29850b7 100644
+--- a/src/styles/globals.css
++++ b/src/styles/globals.css
+@@ -79,33 +79,20 @@ a {
+ .sidebar-bottom {
+   margin-top: auto;
+ }
+-.demo-label {
+-  display: block;
+-  color: #777487;
+-  font-size: 11px;
+-  text-transform: uppercase;
+-  letter-spacing: 0.09em;
+-  padding: 0 10px 8px;
+-}
+-.role-toggle {
+-  display: flex;
+-  padding: 3px;
+-  border-radius: 8px;
+-  background: #292835;
+-  margin: 0 4px 21px;
+-}
+-.role-toggle button {
+-  flex: 1;
+-  border: 0;
+-  padding: 6px;
++.sign-out-button {
++  width: 100%;
++  margin-top: 14px;
++  border: 1px solid #3a3948;
+   background: transparent;
+-  color: #a7a5b3;
+-  border-radius: 6px;
++  color: #b3b0c4;
++  border-radius: 8px;
++  padding: 9px;
+   font-size: 12px;
++  font-weight: 650;
+ }
+-.role-toggle .selected {
++.sign-out-button:hover {
++  background: #2a2936;
+   color: #fff;
+-  background: #464359;
+ }
+ .profile {
+   display: flex;
+@@ -378,6 +365,158 @@ a {
+ .error-state h1 {
+   color: var(--ink);
+ }
++.auth-page {
++  min-height: 100vh;
++  display: grid;
++  place-content: center;
++  padding: 24px;
++  background: var(--canvas);
++}
++.auth-card {
++  width: 380px;
++  max-width: 100%;
++  background: #fff;
++  border: 1px solid var(--line);
++  border-radius: 14px;
++  padding: 32px 28px;
++  box-shadow: 0 20px 45px -30px rgba(33, 31, 43, 0.35);
++}
++.auth-brand {
++  display: flex;
++  align-items: center;
++  gap: 10px;
++  font-weight: 700;
++  color: var(--ink);
++  margin-bottom: 22px;
++}
++.auth-brand .brand-mark {
++  width: 28px;
++  height: 28px;
++  display: grid;
++  place-content: center;
++  border-radius: 8px;
++  background: var(--primary);
++  color: #fff;
++  font-size: 14px;
++}
++.auth-card h1 {
++  font-size: 22px;
++  margin: 0 0 6px;
++  color: var(--ink);
++}
++.auth-subtitle {
++  margin: 0 0 20px;
++  color: var(--muted);
++  font-size: 13px;
++}
++.auth-error {
++  background: #fdecec;
++  border: 1px solid #f3c6c6;
++  color: #a4293d;
++  border-radius: 8px;
++  padding: 10px 12px;
++  font-size: 13px;
++  margin-bottom: 16px;
++}
++.auth-success {
++  background: #eaf7ee;
++  border: 1px solid #bfe4c9;
++  color: #1f7a3f;
++  border-radius: 8px;
++  padding: 10px 12px;
++  font-size: 13px;
++  margin-bottom: 16px;
++}
++.auth-google-button {
++  width: 100%;
++  border: 1px solid var(--line);
++  background: #fff;
++  color: var(--ink);
++  border-radius: 8px;
++  padding: 11px;
++  font-size: 13px;
++  font-weight: 650;
++}
++.auth-google-button:hover {
++  background: #f5f4f8;
++}
++.auth-google-button:disabled,
++.auth-submit-button:disabled {
++  opacity: 0.6;
++  cursor: not-allowed;
++}
++.auth-divider {
++  display: flex;
++  align-items: center;
++  gap: 10px;
++  color: var(--muted);
++  font-size: 12px;
++  margin: 18px 0;
++}
++.auth-divider::before,
++.auth-divider::after {
++  content: '';
++  flex: 1;
++  height: 1px;
++  background: var(--line);
++}
++.auth-form {
++  display: flex;
++  flex-direction: column;
++  gap: 14px;
++}
++.auth-field {
++  display: flex;
++  flex-direction: column;
++  gap: 6px;
++  font-size: 13px;
++  color: var(--ink);
++}
++.auth-field input {
++  border: 1px solid var(--line);
++  border-radius: 8px;
++  padding: 10px 12px;
++  font-size: 14px;
++  font-family: inherit;
++}
++.auth-field input:focus {
++  outline: 2px solid var(--primary);
++  outline-offset: 1px;
++}
++.auth-field-error {
++  color: #a4293d;
++  font-size: 12px;
++}
++.auth-forgot-link {
++  align-self: flex-end;
++  font-size: 12px;
++  color: var(--primary);
++  font-weight: 600;
++  text-decoration: none;
++}
++.auth-forgot-link:hover {
++  text-decoration: underline;
++}
++.auth-submit-button {
++  border: 0;
++  background: var(--primary);
++  color: #fff;
++  border-radius: 8px;
++  padding: 12px;
++  font-size: 13px;
++  font-weight: 700;
++  box-shadow: 0 12px 24px -14px rgba(112, 84, 191, 0.7);
++}
++.auth-back-link {
++  display: inline-block;
++  margin-top: 18px;
++  font-size: 13px;
++  color: var(--muted);
++  text-decoration: none;
++}
++.auth-back-link:hover {
++  color: var(--ink);
++}
+ @media (max-width: 860px) {
+   .sidebar {
+     width: 64px;
+@@ -394,9 +533,7 @@ a {
+   .nav-link span {
+     font-size: 18px;
+   }
+-  .profile > div:not(.avatar),
+-  .demo-label,
+-  .role-toggle {
++  .profile > div:not(.avatar) {
+     display: none;
+   }
+   .profile {
