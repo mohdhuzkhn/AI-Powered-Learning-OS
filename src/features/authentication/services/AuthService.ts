@@ -56,7 +56,7 @@ function translateFirebaseError(error: unknown): AuthError {
     case 'auth/network-request-failed':
       return new AuthError('Network error. Check your connection and try again.', code);
     default:
-      return new AuthError('Unable to sign in. Please try again.', code);
+      return new AuthError('Something went wrong. Please try again.', code);
   }
 }
 
@@ -159,10 +159,23 @@ export const AuthService = {
     );
   },
 
+  /**
+   * Sends a password reset email. Deliberately does not distinguish
+   * "email not found" from success — surfacing that difference lets an
+   * attacker enumerate which emails have accounts (OWASP user enumeration).
+   * The UI always shows the same "check your inbox" message either way.
+   */
   async sendPasswordReset(email: string): Promise<void> {
     try {
       await sendPasswordResetEmail(requireAuth(), email);
     } catch (error) {
+      const code =
+        typeof error === 'object' && error !== null && 'code' in error
+          ? String((error as { code: unknown }).code)
+          : '';
+      if (code === 'auth/user-not-found') {
+        return;
+      }
       throw translateFirebaseError(error);
     }
   },

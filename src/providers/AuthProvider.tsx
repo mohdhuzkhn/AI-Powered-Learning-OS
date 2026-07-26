@@ -18,12 +18,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   // in AuthService for why this listener intentionally ignores those same
   // auth state changes instead of racing to resolve the profile twice.
   useEffect(() => {
-    const unsubscribe = AuthService.onAuthStateChanged((nextUser) => {
-      console.log("AUTH CALLBACK", nextUser);
-      setUser(nextUser);
+    try {
+      const unsubscribe = AuthService.onAuthStateChanged((nextUser) => {
+        setUser(nextUser);
+        setIsLoading(false);
+      });
+      return unsubscribe;
+    } catch (error) {
+      // requireAuth() throws synchronously when Firebase isn't configured.
+      // Without this, isLoading would stay true forever with no visible
+      // explanation — ProtectedRoute would just spin indefinitely.
+      setAuthError(toMessage(error));
       setIsLoading(false);
-    });
-    return unsubscribe;
+      return undefined;
+    }
   }, []);
 
   const signInWithGoogle = useCallback(async () => {
