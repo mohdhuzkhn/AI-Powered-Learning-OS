@@ -130,8 +130,8 @@ No shortcuts.
 
 | Milestone | Status |
 |------------|---------|
-| M1 Project Foundation | ⬜ |
-| M2 Authentication | ⬜ |
+| M1 Project Foundation | ✅  |
+| M2 Authentication | ✅ |
 | M3 Dashboard | ⬜ |
 | M4 Mission System | ⬜ |
 | M5 Submission System | ⬜ |
