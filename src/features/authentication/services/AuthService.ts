@@ -55,6 +55,11 @@ function translateFirebaseError(error: unknown): AuthError {
       return new AuthError('Sign-in was cancelled.', code);
     case 'auth/network-request-failed':
       return new AuthError('Network error. Check your connection and try again.', code);
+    case 'permission-denied':
+      return new AuthError(
+        'Access to your account data was denied. This usually means Firestore security rules are missing or misconfigured.',
+        code,
+      );
     default:
       return new AuthError('Something went wrong. Please try again.', code);
   }
@@ -105,42 +110,49 @@ async function resolveProfile(
 }
 
 /**
- * UID of a sign-in currently being resolved by signInWithGoogle/signInWithEmail.
+ * True while an explicit signInWithGoogle/signInWithEmail call is resolving.
  *
- * Firebase fires onAuthStateChanged as soon as the popup/credential call
- * succeeds — before our own resolveProfile() call (a separate Firestore
- * round-trip) has finished. Without this guard, the listener below could
- * run resolveProfile a second time for the same sign-in, see no profile
- * yet, and incorrectly treat a fresh Google user as unprovisioned. The
- * explicit sign-in methods set this lock before resolving the profile so
- * the listener knows to skip that particular auth state change.
+ * This MUST be set before performSignIn() is even called, not after it
+ * resolves. Firebase fires onAuthStateChanged as part of completing the
+ * sign-in internally — there is no guarantee our own code resumes before
+ * that listener runs. An earlier version of this guard set a UID lock only
+ * after `await performSignIn()` returned, which left exactly that window
+ * open: the listener could see a brand-new UID with autoCreate:false,
+ * throw "no profile found", and force a signOut() — destroying the session
+ * moments after this function's own resolveProfile() call had already
+ * created the Firestore profile. Symptom in practice: the profile shows up
+ * in Firestore, but the app ends up signed out anyway. A boolean set
+ * synchronously before any async work begins has no such window.
  */
-let inFlightUid: string | null = null;
+let signInInProgress = false;
 
 async function signInAndResolve(
   performSignIn: () => Promise<FirebaseUser>,
   options: { autoCreate: boolean },
 ): Promise<AppUser> {
   const auth = requireAuth();
-  let firebaseUser: FirebaseUser;
+  signInInProgress = true;
 
   try {
-    firebaseUser = await performSignIn();
-  } catch (error) {
-    throw translateFirebaseError(error);
-  }
+    let firebaseUser: FirebaseUser;
+    try {
+      firebaseUser = await performSignIn();
+    } catch (error) {
+      throw translateFirebaseError(error);
+    }
 
-  inFlightUid = firebaseUser.uid;
-  try {
-    return await resolveProfile(firebaseUser, options);
-  } catch (error) {
-    // The Firebase Auth sign-in succeeded but there's no valid app access
-    // (disabled account, or no profile provisioned) — don't leave the
-    // browser holding a Firebase session the user can't do anything with.
-    await firebaseSignOut(auth).catch(() => undefined);
-    throw error;
+    try {
+      return await resolveProfile(firebaseUser, options);
+    } catch (error) {
+      // The Firebase Auth sign-in succeeded but there's no valid app access
+      // (disabled account, no profile provisioned, or a Firestore-level
+      // failure like missing security rules) — don't leave the browser
+      // holding a Firebase session the user can't do anything with.
+      await firebaseSignOut(auth).catch(() => undefined);
+      throw error instanceof AuthError ? error : translateFirebaseError(error);
+    }
   } finally {
-    inFlightUid = null;
+    signInInProgress = false;
   }
 }
 
@@ -187,27 +199,31 @@ export const AuthService = {
   /**
    * Subscribes to Firebase Auth session state (page load, refresh, token
    * expiry, sign-out from another tab) and resolves the matching Firestore
-   * profile for each change. Skips any UID currently being handled by an
-   * explicit sign-in call above (see `inFlightUid`) to avoid resolving the
-   * same profile twice with conflicting policies.
+   * profile for each change. Skips entirely while an explicit sign-in call
+   * above is in progress (see `signInInProgress`) — that call owns
+   * resolving this particular auth state change, including deciding
+   * whether to sign back out on failure.
    */
   onAuthStateChanged(callback: (user: AppUser | null) => void): () => void {
     const auth = requireAuth();
     return onAuthStateChanged(auth, async (firebaseUser) => {
-      if (!firebaseUser) {
-        callback(null);
+      if (signInInProgress) {
         return;
       }
-      if (firebaseUser.uid === inFlightUid) {
+      if (!firebaseUser) {
+        callback(null);
         return;
       }
 
       try {
         const profile = await resolveProfile(firebaseUser, { autoCreate: false });
         callback(profile);
-      } catch {
-        // Session no longer maps to valid app access (disabled or no
-        // profile) — end the Firebase session too, per BR-004.
+      } catch (error) {
+        // Session no longer maps to valid app access (disabled, no
+        // profile, or a Firestore-level failure) — end the Firebase
+        // session too, per BR-004. Logged (not silently swallowed) so a
+        // rules-misconfiguration is diagnosable from the browser console.
+        console.error('Session restoration failed:', error);
         await firebaseSignOut(auth).catch(() => undefined);
         callback(null);
       }

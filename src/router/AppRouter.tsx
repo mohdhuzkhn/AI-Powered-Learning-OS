@@ -3,6 +3,7 @@ import { DashboardPage } from '../features/dashboard';
 import { ForgotPasswordPage, LoginPage } from '../features/authentication';
 import { AppShell } from '../shared/layouts/AppShell';
 import { ProtectedRoute } from './ProtectedRoute';
+import { UnauthorizedPage } from './UnauthorizedPage';
 function NotFoundPage() {
   return (
     <main className="error-state">
@@ -18,6 +19,7 @@ export function AppRouter() {
         <Route path="/login" element={<LoginPage />} />
         <Route path="/forgot-password" element={<ForgotPasswordPage />} />
         <Route element={<ProtectedRoute />}>
+          <Route path="/unauthorized" element={<UnauthorizedPage />} />
           <Route element={<AppShell />}>
             <Route path="/dashboard" element={<DashboardPage />} />
           </Route>
