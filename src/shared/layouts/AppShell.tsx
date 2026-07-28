@@ -1,13 +1,18 @@
 import { NavLink, Outlet } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth';
-const navigation = [
-  { label: 'Overview', icon: '⌂', to: '/dashboard' },
-  { label: 'Missions', icon: '◈', to: '/missions' },
-  { label: 'Submissions', icon: '↗', to: '/submissions' },
-  { label: 'Resources', icon: '▤', to: '/resources' },
-];
 export function AppShell() {
   const { user, signOut } = useAuth();
+
+  const navigation = [
+    {
+      label: 'Overview',
+      icon: '⌂',
+      to: user?.role === 'admin' ? '/admin/dashboard' : '/student/dashboard',
+    },
+    { label: 'Missions', icon: '◈', to: '/missions' },
+    { label: 'Submissions', icon: '↗', to: '/submissions' },
+    { label: 'Resources', icon: '▤', to: '/resources' },
+  ];
 
   const handleSignOut = () => {
     signOut().catch((error: unknown) => {

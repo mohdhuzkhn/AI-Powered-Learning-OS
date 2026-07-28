@@ -1,1 +1,2 @@
-export { DashboardPage } from './pages/DashboardPage';
+export { StudentDashboardPage } from './pages/StudentDashboardPage';
+export { AdminDashboardPage } from './pages/AdminDashboardPage';

@@ -1,8 +1,11 @@
 import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom';
-import { DashboardPage } from '../features/dashboard';
+import { AdminDashboardPage, StudentDashboardPage } from '../features/dashboard';
 import { ForgotPasswordPage, LoginPage } from '../features/authentication';
 import { AppShell } from '../shared/layouts/AppShell';
+import { AdminRoute } from './AdminRoute';
+import { DashboardRedirect } from './DashboardRedirect';
 import { ProtectedRoute } from './ProtectedRoute';
+import { StudentRoute } from './StudentRoute';
 import { UnauthorizedPage } from './UnauthorizedPage';
 function NotFoundPage() {
   return (
@@ -20,8 +23,14 @@ export function AppRouter() {
         <Route path="/forgot-password" element={<ForgotPasswordPage />} />
         <Route element={<ProtectedRoute />}>
           <Route path="/unauthorized" element={<UnauthorizedPage />} />
+          <Route path="/dashboard" element={<DashboardRedirect />} />
           <Route element={<AppShell />}>
-            <Route path="/dashboard" element={<DashboardPage />} />
+            <Route element={<StudentRoute />}>
+              <Route path="/student/dashboard" element={<StudentDashboardPage />} />
+            </Route>
+            <Route element={<AdminRoute />}>
+              <Route path="/admin/dashboard" element={<AdminDashboardPage />} />
+            </Route>
           </Route>
         </Route>
         <Route path="/" element={<Navigate to="/dashboard" replace />} />
