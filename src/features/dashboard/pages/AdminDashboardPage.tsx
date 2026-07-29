@@ -1,10 +1,17 @@
+import { useAuth } from '../../../hooks/useAuth';
+import { formatDashboardDate, getTimeBasedGreeting } from '../../../utils/greeting';
+
 export function AdminDashboardPage() {
+  const { user } = useAuth();
+
   return (
     <>
       <section className="welcome">
         <div>
-          <span className="eyebrow">ADMIN OVERVIEW</span>
-          <h1>Your learning community is growing.</h1>
+          <span className="eyebrow">{formatDashboardDate()}</span>
+          <h1>
+            {getTimeBasedGreeting()}, {user?.fullName}
+          </h1>
           <p>Here’s what needs your attention today.</p>
         </div>
         <button className="primary-button">

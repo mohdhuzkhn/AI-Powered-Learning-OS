@@ -1,3 +1,6 @@
+import { useAuth } from '../../../hooks/useAuth';
+import { formatDashboardDate, getTimeBasedGreeting } from '../../../utils/greeting';
+
 const missions = [
   {
     title: 'Build a responsive portfolio',
@@ -26,13 +29,15 @@ const missions = [
 ];
 
 export function StudentDashboardPage() {
+  const { user } = useAuth();
+
   return (
     <>
       <section className="welcome">
         <div>
-          <span className="eyebrow">THURSDAY, JULY 16</span>
+          <span className="eyebrow">{formatDashboardDate()}</span>
           <h1>
-            Good morning, Ayesha <span>✦</span>
+            {getTimeBasedGreeting()}, {user?.fullName} <span>✦</span>
           </h1>
           <p>Small progress every day adds up to big results. You have 3 active missions.</p>
         </div>
