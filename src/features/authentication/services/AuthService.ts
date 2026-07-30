@@ -9,7 +9,7 @@ import {
 } from 'firebase/auth';
 import { getFirebaseServices } from '../../../infrastructure/firebase/firebase';
 import { UserRepository } from '../repositories/UserRepository';
-import type { AppUser } from '../../../types/user.types';
+import type { AppUser, UserRole } from '../../../types/user.types';
 
 /**
  * Business-friendly error thrown by every AuthService method.
@@ -157,6 +157,17 @@ async function signInAndResolve(
 }
 
 export const AuthService = {
+  /**
+   * Counts active users with the given role. Thin wrapper over
+   * UserRepository — exists so other features (e.g. the dashboard) go
+   * through the authentication feature's public service instead of
+   * reaching into its repository directly (docs/04-Engineering/01-System-Architecture.md
+   * §5.4: "every business dependency must pass through a service interface").
+   */
+  async countActiveUsersByRole(role: UserRole): Promise<number> {
+    return UserRepository.countActiveByRole(role);
+  },
+
   async signInWithGoogle(): Promise<AppUser> {
     return signInAndResolve(
       async () => (await signInWithPopup(requireAuth(), new GoogleAuthProvider())).user,

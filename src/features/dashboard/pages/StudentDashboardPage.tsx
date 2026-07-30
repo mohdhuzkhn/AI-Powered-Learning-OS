@@ -39,7 +39,7 @@ export function StudentDashboardPage() {
           <h1>
             {getTimeBasedGreeting()}, {user?.fullName} <span>✦</span>
           </h1>
-          <p>Small progress every day adds up to big results. You have 3 active missions.</p>
+          <p>Small progress every day adds up to big results.</p>
         </div>
         <button className="primary-button">
           View learning path <span>→</span>
@@ -48,20 +48,20 @@ export function StudentDashboardPage() {
       <section className="stats-grid">
         <article>
           <span>Active missions</span>
-          <strong>3</strong>
-          <small className="positive">↑ 1 from last week</small>
+          <strong>0</strong>
+          <small>No missions assigned yet</small>
         </article>
         <article>
           <span>Completed</span>
-          <strong>12</strong>
-          <small>of 18 total missions</small>
+          <strong>0</strong>
+          <small>No missions completed yet</small>
         </article>
         <article>
           <span>Learning streak</span>
           <strong>
-            7 <em>days</em>
+            0 <em>days</em>
           </strong>
-          <small>Keep it going! 🔥</small>
+          <small>Complete a mission to start your streak</small>
         </article>
       </section>
       <section className="content-section">

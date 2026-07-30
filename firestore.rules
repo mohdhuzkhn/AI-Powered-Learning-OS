@@ -1,0 +1,50 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    match /users/{userId} {
+      function isSelf() {
+        return request.auth != null && request.auth.uid == userId;
+      }
+
+      // Checked by reading the REQUESTER's own profile — this is a
+      // privileged internal read Firestore rules allow specifically for
+      // authorization checks; it does not re-trigger these same rules.
+      function isActiveAdmin() {
+        let requester = get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
+        return request.auth != null && requester.role == 'admin' && requester.status == 'active';
+      }
+
+      // Single-document reads: a user reading their own profile, or an
+      // active admin reading any single profile.
+      allow get: if isSelf() || isActiveAdmin();
+
+      // Collection queries (including count aggregations, e.g. the admin
+      // dashboard's "active students" stat) — admin only. A student must
+      // never be able to list/query every user in the platform.
+      allow list: if isActiveAdmin();
+
+      // A profile may only be self-created as an active student — matches
+      // AuthService's Google sign-in auto-create policy exactly
+      // (docs/03-Features/01-Authentication.md, BR-005: only
+      // administrators create accounts otherwise; self-creation is
+      // deliberately limited to the least-privileged role).
+      allow create: if isSelf()
+                    && request.resource.data.role == 'student'
+                    && request.resource.data.status == 'active';
+
+      // Users may update their own profile (e.g. lastLogin/updatedAt on
+      // every sign-in) but can never change their own role or status —
+      // that would be self-promotion / self-reactivation, which only an
+      // administrator should be able to do (future M8 admin panel).
+      allow update: if isSelf()
+                    && request.resource.data.role == resource.data.role
+                    && request.resource.data.status == resource.data.status;
+
+      // No client-side deletes in Phase 1 (docs/04-Engineering/02-Database-Design.md
+      // "Avoid hard deletion" — disable via status instead).
+      allow delete: if false;
+    }
+  }
+}

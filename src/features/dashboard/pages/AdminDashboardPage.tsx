@@ -1,8 +1,36 @@
+import { useEffect, useState } from 'react';
 import { useAuth } from '../../../hooks/useAuth';
 import { formatDashboardDate, getTimeBasedGreeting } from '../../../utils/greeting';
+import { DashboardService } from '../services/DashboardService';
+
+type StatsState =
+  | { status: 'loading' }
+  | { status: 'loaded'; activeStudents: number }
+  | { status: 'error' };
 
 export function AdminDashboardPage() {
   const { user } = useAuth();
+  const [stats, setStats] = useState<StatsState>({ status: 'loading' });
+
+  useEffect(() => {
+    let cancelled = false;
+
+    DashboardService.getAdminStats()
+      .then((result) => {
+        if (!cancelled) setStats({ status: 'loaded', activeStudents: result.activeStudents });
+      })
+      .catch((error: unknown) => {
+        // Isolated widget failure — per docs/03-Features/02-Dashboard.md
+        // "A broken widget must never crash the dashboard." Logged so a
+        // rules/config problem is diagnosable, not silently swallowed.
+        console.error('Failed to load admin dashboard stats:', error);
+        if (!cancelled) setStats({ status: 'error' });
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   return (
     <>
@@ -21,18 +49,20 @@ export function AdminDashboardPage() {
       <section className="stats-grid">
         <article>
           <span>Active students</span>
-          <strong>48</strong>
-          <small className="positive">↑ 8% this month</small>
+          <strong>{stats.status === 'loaded' ? stats.activeStudents : stats.status === 'error' ? '—' : '…'}</strong>
+          <small className={stats.status === 'error' ? 'attention' : undefined}>
+            {stats.status === 'error' ? 'Could not load right now' : 'Live count from Firestore'}
+          </small>
         </article>
         <article>
           <span>Active missions</span>
-          <strong>16</strong>
-          <small>Across 4 learning tracks</small>
+          <strong>0</strong>
+          <small>No missions created yet</small>
         </article>
         <article>
           <span>Awaiting review</span>
-          <strong>9</strong>
-          <small className="attention">Needs your attention</small>
+          <strong>0</strong>
+          <small>No submissions yet</small>
         </article>
       </section>
       <section className="content-section">

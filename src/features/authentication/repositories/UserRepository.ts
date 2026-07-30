@@ -1,10 +1,14 @@
 import {
+  collection,
   doc,
+  getCountFromServer,
   getDoc,
+  query,
   setDoc,
   updateDoc,
   serverTimestamp,
   Timestamp,
+  where,
   type DocumentData,
 } from 'firebase/firestore';
 import { getFirebaseServices } from '../../../infrastructure/firebase/firebase';
@@ -109,5 +113,23 @@ export const UserRepository = {
       lastLogin: serverTimestamp(),
       updatedAt: serverTimestamp(),
     });
+  },
+
+  /**
+   * Counts active users with the given role — used for admin dashboard
+   * stats. Uses a server-side count aggregation so only a number crosses
+   * the network, never the matching documents themselves (docs/04-Engineering/06-Performance.md,
+   * "avoid reading entire collections"). Requires the caller to be an
+   * active admin per firestore.rules' `list` permission on /users.
+   */
+  async countActiveByRole(role: UserRole): Promise<number> {
+    const db = requireDb();
+    const activeUsersOfRole = query(
+      collection(db, USERS_COLLECTION),
+      where('role', '==', role),
+      where('status', '==', 'active'),
+    );
+    const snapshot = await getCountFromServer(activeUsersOfRole);
+    return snapshot.data().count;
   },
 };
