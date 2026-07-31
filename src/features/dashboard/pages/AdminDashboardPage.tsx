@@ -1,7 +1,9 @@
 import { useEffect, useState } from 'react';
+import { Link } from 'react-router-dom';
 import { useAuth } from '../../../hooks/useAuth';
 import { formatDashboardDate, getTimeBasedGreeting } from '../../../utils/greeting';
 import { DashboardService } from '../services/DashboardService';
+import { EmptyState } from '../../../shared/components/EmptyState';
 
 type StatsState =
   | { status: 'loading' }
@@ -42,9 +44,9 @@ export function AdminDashboardPage() {
           </h1>
           <p>Here’s what needs your attention today.</p>
         </div>
-        <button className="primary-button">
+        <Link to="/admin/missions/create" className="primary-button">
           Create mission <span>+</span>
-        </button>
+        </Link>
       </section>
       <section className="stats-grid">
         <article>
@@ -71,26 +73,11 @@ export function AdminDashboardPage() {
             <span className="eyebrow">REVIEW QUEUE</span>
             <h2>Recent submissions</h2>
           </div>
-          <a href="#submissions">Open review queue →</a>
+          <Link to="/admin/submissions">Open review queue →</Link>
         </div>
-        <div className="review-list">
-          {[
-            'Ayesha Rahman — Responsive portfolio',
-            'Daniel Kim — JavaScript array methods',
-            'Nadia Ali — Build a REST API',
-          ].map((item, index) => (
-            <article key={item}>
-              <div className="avatar">{item[0]}</div>
-              <div>
-                <strong>{item}</strong>
-                <span>
-                  Submitted {index + 1} hour{index ? 's' : ''} ago
-                </span>
-              </div>
-              <button>Review</button>
-            </article>
-          ))}
-        </div>
+        {/* No submission repository exists yet (M5) — genuinely empty,
+            not a loading placeholder for hidden fake data. */}
+        <EmptyState title="No submissions yet." description="Nothing to review right now." />
       </section>
     </>
   );

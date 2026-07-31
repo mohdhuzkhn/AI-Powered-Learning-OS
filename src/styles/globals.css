@@ -181,6 +181,8 @@ a {
   font-size: 14px;
 }
 .primary-button {
+  display: inline-flex;
+  align-items: center;
   border: 0;
   background: var(--primary);
   color: white;
@@ -190,6 +192,7 @@ a {
   font-size: 13px;
   font-weight: 700;
   white-space: nowrap;
+  text-decoration: none;
 }
 .primary-button span {
   font-size: 17px;
@@ -251,108 +254,23 @@ a {
   font-weight: 700;
   text-decoration: none;
 }
-.mission-grid {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 16px;
-}
-.mission-card {
-  padding: 20px;
-  min-height: 218px;
+.empty-state {
   background: #fff;
   border: 1px solid var(--line);
   border-radius: 10px;
+  padding: 40px 24px;
+  text-align: center;
 }
-.mission-icon {
-  display: grid;
-  place-items: center;
-  height: 34px;
-  width: 34px;
-  border-radius: 9px;
-  color: #fff;
-  font-weight: 700;
-}
-.violet {
-  background: #8061ce;
-}
-.orange {
-  background: #d6873d;
-}
-.blue {
-  background: #4b82ba;
-}
-.mission-meta {
-  display: flex;
-  justify-content: space-between;
-  margin-top: 18px;
-  font-size: 11px;
-  color: var(--muted);
-}
-.mission-meta b {
-  color: #8061ce;
+.empty-state-title {
+  margin: 0 0 4px;
+  font-size: 15px;
   font-weight: 650;
+  color: var(--ink);
 }
-.mission-card h3 {
-  font-size: 16px;
-  margin: 9px 0 25px;
-  letter-spacing: -0.02em;
-}
-.progress {
-  height: 5px;
-  background: #eeedf2;
-  border-radius: 4px;
-  overflow: hidden;
-}
-.progress span {
-  display: block;
-  height: 100%;
-  background: var(--primary);
-  border-radius: inherit;
-}
-.mission-card footer {
-  display: flex;
-  justify-content: space-between;
-  margin-top: 10px;
-  color: var(--muted);
-  font-size: 11px;
-}
-.review-list {
-  border: 1px solid var(--line);
-  border-radius: 10px;
-  overflow: hidden;
-  background: #fff;
-}
-.review-list article {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 15px 18px;
-  border-bottom: 1px solid var(--line);
-}
-.review-list article:last-child {
-  border: 0;
-}
-.review-list strong,
-.review-list span {
-  display: block;
-}
-.review-list strong {
+.empty-state-description {
+  margin: 0;
   font-size: 13px;
-}
-.review-list span {
-  margin-top: 3px;
   color: var(--muted);
-  font-size: 12px;
-}
-.review-list button {
-  margin-left: auto;
-  border: 1px solid #dedbe8;
-  border-radius: 7px;
-  background: white;
-  color: var(--primary);
-  padding: 7px 11px;
-  font-size: 12px;
-  font-weight: 700;
 }
 .page-loader,
 .error-state {

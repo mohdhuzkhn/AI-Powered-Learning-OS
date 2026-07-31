@@ -1,32 +1,7 @@
+import { Link } from 'react-router-dom';
 import { useAuth } from '../../../hooks/useAuth';
 import { formatDashboardDate, getTimeBasedGreeting } from '../../../utils/greeting';
-
-const missions = [
-  {
-    title: 'Build a responsive portfolio',
-    track: 'Frontend Development',
-    due: 'Due in 2 days',
-    status: 'In progress',
-    progress: 65,
-    color: 'violet',
-  },
-  {
-    title: 'JavaScript array methods',
-    track: 'JavaScript Fundamentals',
-    due: 'Due Jul 22',
-    status: 'Not started',
-    progress: 0,
-    color: 'orange',
-  },
-  {
-    title: 'Design a REST API',
-    track: 'Backend Development',
-    due: 'Due Jul 26',
-    status: 'In progress',
-    progress: 30,
-    color: 'blue',
-  },
-];
+import { EmptyState } from '../../../shared/components/EmptyState';
 
 export function StudentDashboardPage() {
   const { user } = useAuth();
@@ -41,9 +16,9 @@ export function StudentDashboardPage() {
           </h1>
           <p>Small progress every day adds up to big results.</p>
         </div>
-        <button className="primary-button">
+        <Link to="/student/missions" className="primary-button">
           View learning path <span>→</span>
-        </button>
+        </Link>
       </section>
       <section className="stats-grid">
         <article>
@@ -70,27 +45,11 @@ export function StudentDashboardPage() {
             <span className="eyebrow">KEEP MOVING</span>
             <h2>Your active missions</h2>
           </div>
-          <a href="#missions">View all missions →</a>
+          <Link to="/student/missions">View all missions →</Link>
         </div>
-        <div className="mission-grid">
-          {missions.map((mission) => (
-            <article className="mission-card" key={mission.title}>
-              <div className={`mission-icon ${mission.color}`}>⌘</div>
-              <div className="mission-meta">
-                <span>{mission.track}</span>
-                <b>{mission.status}</b>
-              </div>
-              <h3>{mission.title}</h3>
-              <div className="progress">
-                <span style={{ width: `${mission.progress}%` }} />
-              </div>
-              <footer>
-                <span>{mission.due}</span>
-                <span>{mission.progress}% complete</span>
-              </footer>
-            </article>
-          ))}
-        </div>
+        {/* No mission repository exists yet (M4) — this is a genuinely
+            empty state, not a loading placeholder for hidden fake data. */}
+        <EmptyState title="No missions assigned." description="Enjoy your free time!" />
       </section>
     </>
   );
