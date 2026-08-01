@@ -51,6 +51,19 @@ export function StudentDashboardPage() {
             empty state, not a loading placeholder for hidden fake data. */}
         <EmptyState title="No missions assigned." description="Enjoy your free time!" />
       </section>
+      <section className="content-section">
+        <div className="section-title">
+          <div>
+            <span className="eyebrow">STAY INFORMED</span>
+            <h2>Announcements</h2>
+          </div>
+        </div>
+        {/* No announcement repository exists yet (M6) — genuinely empty. */}
+        <EmptyState
+          title="No announcements yet."
+          description="Check back soon for updates from your instructors."
+        />
+      </section>
     </>
   );
 }

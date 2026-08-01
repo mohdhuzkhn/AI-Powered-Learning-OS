@@ -79,6 +79,20 @@ export function AdminDashboardPage() {
             not a loading placeholder for hidden fake data. */}
         <EmptyState title="No submissions yet." description="Nothing to review right now." />
       </section>
+      <section className="content-section">
+        <div className="section-title">
+          <div>
+            <span className="eyebrow">ACTIVITY FEED</span>
+            <h2>Recent activity</h2>
+          </div>
+        </div>
+        {/* activityLogs collection has no writer yet — nothing generates
+            events until M4/M5/M6 exist. Genuinely empty. */}
+        <EmptyState
+          title="No recent activity."
+          description="Platform activity will appear here as it happens."
+        />
+      </section>
     </>
   );
 }
