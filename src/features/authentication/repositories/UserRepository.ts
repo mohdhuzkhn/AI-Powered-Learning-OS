@@ -11,7 +11,7 @@ import {
   where,
   type DocumentData,
 } from 'firebase/firestore';
-import { getFirebaseServices } from '../../../infrastructure/firebase/firebase';
+import { requireDb } from '../../../infrastructure/firebase/requireDb';
 import type { AppUser, NewUserProfileInput, UserRole, UserStatus } from '../../../types/user.types';
 
 const USERS_COLLECTION = 'users';
@@ -43,19 +43,6 @@ function toAppUser(uid: string, data: UserDocument): AppUser {
     updatedAt: data.updatedAt.toDate(),
     lastLogin: data.lastLogin?.toDate(),
   };
-}
-
-/**
- * Firestore is only reachable once environment configuration exists.
- * Failing fast here gives a clear, actionable error instead of a
- * confusing downstream Firebase SDK exception.
- */
-function requireDb() {
-  const services = getFirebaseServices();
-  if (!services) {
-    throw new Error('Firebase is not configured. Check your environment variables.');
-  }
-  return services.db;
 }
 
 /**

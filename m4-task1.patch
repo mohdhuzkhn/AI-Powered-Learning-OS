@@ -1,0 +1,366 @@
+diff --git a/firestore.indexes.json b/firestore.indexes.json
+index 415027e..b36f8eb 100644
+--- a/firestore.indexes.json
++++ b/firestore.indexes.json
+@@ -1,4 +1,13 @@
+ {
+-  "indexes": [],
++  "indexes": [
++    {
++      "collectionGroup": "missions",
++      "queryScope": "COLLECTION",
++      "fields": [
++        { "fieldPath": "status", "order": "ASCENDING" },
++        { "fieldPath": "createdAt", "order": "DESCENDING" }
++      ]
++    }
++  ],
+   "fieldOverrides": []
+ }
+diff --git a/firestore.rules b/firestore.rules
+index f39d7c4..0daaa63 100644
+--- a/firestore.rules
++++ b/firestore.rules
+@@ -3,19 +3,20 @@ rules_version = '2';
+ service cloud.firestore {
+   match /databases/{database}/documents {
+ 
++    // Checked by reading the REQUESTER's own profile — this is a
++    // privileged internal read Firestore rules allow specifically for
++    // authorization checks; it does not re-trigger these same rules.
++    // Top-level so every collection's rules below can reuse it.
++    function isActiveAdmin() {
++      let requester = get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
++      return request.auth != null && requester.role == 'admin' && requester.status == 'active';
++    }
++
+     match /users/{userId} {
+       function isSelf() {
+         return request.auth != null && request.auth.uid == userId;
+       }
+ 
+-      // Checked by reading the REQUESTER's own profile — this is a
+-      // privileged internal read Firestore rules allow specifically for
+-      // authorization checks; it does not re-trigger these same rules.
+-      function isActiveAdmin() {
+-        let requester = get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
+-        return request.auth != null && requester.role == 'admin' && requester.status == 'active';
+-      }
+-
+       // Single-document reads: a user reading their own profile, or an
+       // active admin reading any single profile.
+       allow get: if isSelf() || isActiveAdmin();
+@@ -46,5 +47,35 @@ service cloud.firestore {
+       // "Avoid hard deletion" — disable via status instead).
+       allow delete: if false;
+     }
++
++    match /missions/{missionId} {
++      // Admins can read any single mission (any status) or list without
++      // constraint. Non-admins can read/list only published missions —
++      // drafts must never be visible to students (mirrors BR-ANN-004's
++      // "Draft announcements are invisible to students" — same principle
++      // applies here even though not separately numbered for missions).
++      // Archived missions stay readable so students retain history access
++      // to missions they were previously assigned.
++      allow get: if isActiveAdmin()
++                 || (request.auth != null && resource.data.status != 'draft');
++      allow list: if isActiveAdmin()
++                  || (request.auth != null && resource.data.status == 'published');
++
++      // Only admins create/edit missions. Deeper lifecycle rules (e.g.
++      // "archived missions cannot be edited") are enforced by
++      // MissionService at the application layer, not duplicated here —
++      // this rule is the authorization boundary, not the full business
++      // rule set (docs/04-Engineering/01-System-Architecture.md's 3-layer
++      // validation: UI -> Application Service -> Firestore Rules).
++      allow create: if isActiveAdmin()
++                    && request.resource.data.title is string
++                    && request.resource.data.title.size() > 0
++                    && request.resource.data.status in ['draft', 'published'];
++      allow update: if isActiveAdmin();
++
++      // No hard deletes — "delete" is archiving via update, same pattern
++      // as users.
++      allow delete: if false;
++    }
+   }
+ }
+diff --git a/src/features/authentication/repositories/UserRepository.ts b/src/features/authentication/repositories/UserRepository.ts
+index bf22d54..b7acd7c 100644
+--- a/src/features/authentication/repositories/UserRepository.ts
++++ b/src/features/authentication/repositories/UserRepository.ts
+@@ -11,7 +11,7 @@ import {
+   where,
+   type DocumentData,
+ } from 'firebase/firestore';
+-import { getFirebaseServices } from '../../../infrastructure/firebase/firebase';
++import { requireDb } from '../../../infrastructure/firebase/requireDb';
+ import type { AppUser, NewUserProfileInput, UserRole, UserStatus } from '../../../types/user.types';
+ 
+ const USERS_COLLECTION = 'users';
+@@ -45,19 +45,6 @@ function toAppUser(uid: string, data: UserDocument): AppUser {
+   };
+ }
+ 
+-/**
+- * Firestore is only reachable once environment configuration exists.
+- * Failing fast here gives a clear, actionable error instead of a
+- * confusing downstream Firebase SDK exception.
+- */
+-function requireDb() {
+-  const services = getFirebaseServices();
+-  if (!services) {
+-    throw new Error('Firebase is not configured. Check your environment variables.');
+-  }
+-  return services.db;
+-}
+-
+ /**
+  * Owns all Firestore access for the `users` collection.
+  *
+diff --git a/src/features/missions/repositories/MissionRepository.ts b/src/features/missions/repositories/MissionRepository.ts
+new file mode 100644
+index 0000000..78cf20e
+--- /dev/null
++++ b/src/features/missions/repositories/MissionRepository.ts
+@@ -0,0 +1,143 @@
++import {
++  addDoc,
++  collection,
++  doc,
++  getDoc,
++  getDocs,
++  orderBy,
++  query,
++  serverTimestamp,
++  Timestamp,
++  updateDoc,
++  where,
++  type DocumentData,
++} from 'firebase/firestore';
++import { requireDb } from '../../../infrastructure/firebase/requireDb';
++import type {
++  Mission,
++  MissionCategory,
++  MissionDifficulty,
++  MissionStatus,
++  MissionUpdateInput,
++  NewMissionInput,
++} from '../types/mission.types';
++
++const MISSIONS_COLLECTION = 'missions';
++
++/** Raw shape of a `missions/{id}` document as stored in Firestore. */
++interface MissionDocument extends DocumentData {
++  title: string;
++  description: string;
++  category: MissionCategory;
++  difficulty: MissionDifficulty;
++  deadline: Timestamp;
++  resourceIds: string[];
++  status: MissionStatus;
++  createdBy: string;
++  createdAt: Timestamp;
++  updatedAt: Timestamp;
++}
++
++function toMission(id: string, data: MissionDocument): Mission {
++  return {
++    id,
++    title: data.title,
++    description: data.description,
++    category: data.category,
++    difficulty: data.difficulty,
++    deadline: data.deadline.toDate(),
++    resourceIds: data.resourceIds ?? [],
++    status: data.status,
++    createdBy: data.createdBy,
++    createdAt: data.createdAt.toDate(),
++    updatedAt: data.updatedAt.toDate(),
++  };
++}
++
++/**
++ * Owns all Firestore access for the `missions` collection.
++ *
++ * Like UserRepository, this never enforces business rules (e.g. "archived
++ * missions cannot be edited," "only published missions can be assigned")
++ * — that belongs to MissionService. This is persistence and mapping only.
++ */
++export const MissionRepository = {
++  async findById(id: string): Promise<Mission | null> {
++    const db = requireDb();
++    const snapshot = await getDoc(doc(db, MISSIONS_COLLECTION, id));
++    if (!snapshot.exists()) return null;
++    return toMission(snapshot.id, snapshot.data() as MissionDocument);
++  },
++
++  /** Every mission, any status — admin views only (enforced by firestore.rules). */
++  async listAll(): Promise<Mission[]> {
++    const db = requireDb();
++    const snapshot = await getDocs(
++      query(collection(db, MISSIONS_COLLECTION), orderBy('createdAt', 'desc')),
++    );
++    return snapshot.docs.map((document) => toMission(document.id, document.data() as MissionDocument));
++  },
++
++  /** Published missions only — the set students are allowed to see. */
++  async listPublished(): Promise<Mission[]> {
++    const db = requireDb();
++    const snapshot = await getDocs(
++      query(
++        collection(db, MISSIONS_COLLECTION),
++        where('status', '==', 'published' satisfies MissionStatus),
++        orderBy('createdAt', 'desc'),
++      ),
++    );
++    return snapshot.docs.map((document) => toMission(document.id, document.data() as MissionDocument));
++  },
++
++  async create(input: NewMissionInput, createdBy: string): Promise<Mission> {
++    const db = requireDb();
++    const ref = await addDoc(collection(db, MISSIONS_COLLECTION), {
++      title: input.title,
++      description: input.description,
++      category: input.category,
++      difficulty: input.difficulty,
++      deadline: Timestamp.fromDate(input.deadline),
++      resourceIds: [],
++      status: input.status,
++      createdBy,
++      createdAt: serverTimestamp(),
++      updatedAt: serverTimestamp(),
++    });
++
++    const created = await getDoc(ref);
++    return toMission(created.id, created.data() as MissionDocument);
++  },
++
++  async update(id: string, input: MissionUpdateInput): Promise<Mission> {
++    const db = requireDb();
++    const ref = doc(db, MISSIONS_COLLECTION, id);
++
++    const payload: Record<string, unknown> = { updatedAt: serverTimestamp() };
++    if (input.title !== undefined) payload.title = input.title;
++    if (input.description !== undefined) payload.description = input.description;
++    if (input.category !== undefined) payload.category = input.category;
++    if (input.difficulty !== undefined) payload.difficulty = input.difficulty;
++    if (input.deadline !== undefined) payload.deadline = Timestamp.fromDate(input.deadline);
++    if (input.status !== undefined) payload.status = input.status;
++
++    await updateDoc(ref, payload);
++    const updated = await getDoc(ref);
++    return toMission(updated.id, updated.data() as MissionDocument);
++  },
++
++  /**
++   * "Delete" is soft — sets status to archived. Matches
++   * docs/04-Engineering/02-Database-Design.md's deletion strategy
++   * ("Avoid hard deletion... status = archived") and BR-MIS-005
++   * ("Deleted missions are hidden from users").
++   */
++  async archive(id: string): Promise<void> {
++    const db = requireDb();
++    await updateDoc(doc(db, MISSIONS_COLLECTION, id), {
++      status: 'archived' satisfies MissionStatus,
++      updatedAt: serverTimestamp(),
++    });
++  },
++};
+diff --git a/src/features/missions/types/mission.types.ts b/src/features/missions/types/mission.types.ts
+new file mode 100644
+index 0000000..352685d
+--- /dev/null
++++ b/src/features/missions/types/mission.types.ts
+@@ -0,0 +1,69 @@
++/**
++ * missions.status per docs/04-Engineering/02-Database-Design.md — a
++ * simple 3-value lifecycle for the mission itself. The richer lifecycle
++ * described in docs/03-Features/03-Mission-System.md (Assigned, Pending
++ * Submission, Submitted, Under Review, Completed, Rejected) describes
++ * ASSIGNMENT/SUBMISSION state, not mission state — that lives on
++ * missionAssignments/submissions instead, per the same doc's own rule:
++ * "Never embed submission logic inside the Mission module."
++ */
++export type MissionStatus = 'draft' | 'published' | 'archived';
++
++export type MissionDifficulty = 'Beginner' | 'Intermediate' | 'Advanced';
++
++/**
++ * Fixed set for Phase 1 — Mission-System.md notes categories "should be
++ * configurable in future versions," meaning admin-managed categories are
++ * explicitly out of scope right now (YAGNI). This is the example list
++ * from that same document.
++ */
++export const MISSION_CATEGORIES = [
++  'Web Development',
++  'Mobile Development',
++  'AI',
++  'Machine Learning',
++  'Data Science',
++  'UI/UX',
++  'Cyber Security',
++  'DevOps',
++  'Programming Fundamentals',
++] as const;
++
++export type MissionCategory = (typeof MISSION_CATEGORIES)[number];
++
++/**
++ * Domain representation of a `missions/{id}` Firestore document.
++ * `resourceIds` exists in the schema now so the Resource System (a later
++ * milestone) can attach resources without a schema migration — per
++ * Mission-System.md's AI Agent Context: "Design mission entities to
++ * support future GitHub integration and AI-generated missions without
++ * schema redesign." No UI manages this field until that milestone.
++ */
++export interface Mission {
++  id: string;
++  title: string;
++  description: string;
++  category: MissionCategory;
++  difficulty: MissionDifficulty;
++  deadline: Date;
++  resourceIds: string[];
++  status: MissionStatus;
++  createdBy: string;
++  createdAt: Date;
++  updatedAt: Date;
++}
++
++/** Fields required to create a new mission (always starts as draft or published). */
++export interface NewMissionInput {
++  title: string;
++  description: string;
++  category: MissionCategory;
++  difficulty: MissionDifficulty;
++  deadline: Date;
++  status: Extract<MissionStatus, 'draft' | 'published'>;
++}
++
++/** Fields an admin may change when editing an existing mission. */
++export type MissionUpdateInput = Partial<
++  Pick<Mission, 'title' | 'description' | 'category' | 'difficulty' | 'deadline' | 'status'>
++>;
+diff --git a/src/infrastructure/firebase/requireDb.ts b/src/infrastructure/firebase/requireDb.ts
+new file mode 100644
+index 0000000..3789629
+--- /dev/null
++++ b/src/infrastructure/firebase/requireDb.ts
+@@ -0,0 +1,15 @@
++import type { Firestore } from 'firebase/firestore';
++import { getFirebaseServices } from './firebase';
++
++/**
++ * Firestore is only reachable once environment configuration exists.
++ * Failing fast here gives every repository a clear, actionable error
++ * instead of a confusing downstream Firebase SDK exception.
++ */
++export function requireDb(): Firestore {
++  const services = getFirebaseServices();
++  if (!services) {
++    throw new Error('Firebase is not configured. Check your environment variables.');
++  }
++  return services.db;
++}

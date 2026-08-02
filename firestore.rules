@@ -3,17 +3,18 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
+    // Checked by reading the REQUESTER's own profile — this is a
+    // privileged internal read Firestore rules allow specifically for
+    // authorization checks; it does not re-trigger these same rules.
+    // Top-level so every collection's rules below can reuse it.
+    function isActiveAdmin() {
+      let requester = get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
+      return request.auth != null && requester.role == 'admin' && requester.status == 'active';
+    }
+
     match /users/{userId} {
       function isSelf() {
         return request.auth != null && request.auth.uid == userId;
-      }
-
-      // Checked by reading the REQUESTER's own profile — this is a
-      // privileged internal read Firestore rules allow specifically for
-      // authorization checks; it does not re-trigger these same rules.
-      function isActiveAdmin() {
-        let requester = get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
-        return request.auth != null && requester.role == 'admin' && requester.status == 'active';
       }
 
       // Single-document reads: a user reading their own profile, or an
@@ -44,6 +45,36 @@ service cloud.firestore {
 
       // No client-side deletes in Phase 1 (docs/04-Engineering/02-Database-Design.md
       // "Avoid hard deletion" — disable via status instead).
+      allow delete: if false;
+    }
+
+    match /missions/{missionId} {
+      // Admins can read any single mission (any status) or list without
+      // constraint. Non-admins can read/list only published missions —
+      // drafts must never be visible to students (mirrors BR-ANN-004's
+      // "Draft announcements are invisible to students" — same principle
+      // applies here even though not separately numbered for missions).
+      // Archived missions stay readable so students retain history access
+      // to missions they were previously assigned.
+      allow get: if isActiveAdmin()
+                 || (request.auth != null && resource.data.status != 'draft');
+      allow list: if isActiveAdmin()
+                  || (request.auth != null && resource.data.status == 'published');
+
+      // Only admins create/edit missions. Deeper lifecycle rules (e.g.
+      // "archived missions cannot be edited") are enforced by
+      // MissionService at the application layer, not duplicated here —
+      // this rule is the authorization boundary, not the full business
+      // rule set (docs/04-Engineering/01-System-Architecture.md's 3-layer
+      // validation: UI -> Application Service -> Firestore Rules).
+      allow create: if isActiveAdmin()
+                    && request.resource.data.title is string
+                    && request.resource.data.title.size() > 0
+                    && request.resource.data.status in ['draft', 'published'];
+      allow update: if isActiveAdmin();
+
+      // No hard deletes — "delete" is archiving via update, same pattern
+      // as users.
       allow delete: if false;
     }
   }
