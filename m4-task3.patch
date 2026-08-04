@@ -1,0 +1,338 @@
+diff --git a/src/features/missions/components/MissionCard.tsx b/src/features/missions/components/MissionCard.tsx
+new file mode 100644
+index 0000000..bcaddb3
+--- /dev/null
++++ b/src/features/missions/components/MissionCard.tsx
+@@ -0,0 +1,28 @@
++import type { Mission } from '../types/mission.types';
++
++const STATUS_LABELS: Record<Mission['status'], string> = {
++  draft: 'Draft',
++  published: 'Published',
++  archived: 'Archived',
++};
++
++function formatDeadline(deadline: Date): string {
++  return deadline.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
++}
++
++export function MissionCard({ mission }: { mission: Mission }) {
++  return (
++    <article className="mission-list-card">
++      <div className="mission-list-card-header">
++        <span className={`status-badge status-${mission.status}`}>{STATUS_LABELS[mission.status]}</span>
++        <span className="mission-difficulty">{mission.difficulty}</span>
++      </div>
++      <h3>{mission.title}</h3>
++      <p>{mission.description}</p>
++      <footer>
++        <span>{mission.category}</span>
++        <span>Due {formatDeadline(mission.deadline)}</span>
++      </footer>
++    </article>
++  );
++}
+diff --git a/src/features/missions/index.ts b/src/features/missions/index.ts
+new file mode 100644
+index 0000000..07cd67f
+--- /dev/null
++++ b/src/features/missions/index.ts
+@@ -0,0 +1 @@
++export { AdminMissionListPage } from './pages/AdminMissionListPage';
+diff --git a/src/features/missions/pages/AdminMissionListPage.tsx b/src/features/missions/pages/AdminMissionListPage.tsx
+new file mode 100644
+index 0000000..e9e2373
+--- /dev/null
++++ b/src/features/missions/pages/AdminMissionListPage.tsx
+@@ -0,0 +1,128 @@
++import { useEffect, useMemo, useState } from 'react';
++import { Link } from 'react-router-dom';
++import { useAuth } from '../../../hooks/useAuth';
++import { EmptyState } from '../../../shared/components/EmptyState';
++import { MissionService } from '../services/MissionService';
++import type { Mission, MissionStatus } from '../types/mission.types';
++import { MissionCard } from '../components/MissionCard';
++
++type ListState =
++  | { status: 'loading' }
++  | { status: 'loaded'; missions: Mission[] }
++  | { status: 'error'; message: string };
++
++const STATUS_FILTERS: Array<{ label: string; value: MissionStatus | 'all' }> = [
++  { label: 'All', value: 'all' },
++  { label: 'Draft', value: 'draft' },
++  { label: 'Published', value: 'published' },
++  { label: 'Archived', value: 'archived' },
++];
++
++export function AdminMissionListPage() {
++  const { user } = useAuth();
++  const [state, setState] = useState<ListState>({ status: 'loading' });
++  const [search, setSearch] = useState('');
++  const [statusFilter, setStatusFilter] = useState<MissionStatus | 'all'>('all');
++
++  useEffect(() => {
++    // AdminRoute already guarantees an admin user by the time this
++    // renders — this guard is for TypeScript's benefit, not a real
++    // runtime possibility.
++    if (!user) return;
++    let cancelled = false;
++
++    MissionService.listAllMissions(user)
++      .then((missions) => {
++        if (!cancelled) setState({ status: 'loaded', missions });
++      })
++      .catch((error: unknown) => {
++        console.error('Failed to load missions:', error);
++        if (!cancelled) {
++          setState({
++            status: 'error',
++            message: error instanceof Error ? error.message : 'Failed to load missions.',
++          });
++        }
++      });
++
++    return () => {
++      cancelled = true;
++    };
++  }, [user]);
++
++  const filteredMissions = useMemo(() => {
++    if (state.status !== 'loaded') return [];
++    const term = search.trim().toLowerCase();
++
++    return state.missions.filter((mission) => {
++      const matchesStatus = statusFilter === 'all' || mission.status === statusFilter;
++      const matchesSearch =
++        term.length === 0 ||
++        mission.title.toLowerCase().includes(term) ||
++        mission.category.toLowerCase().includes(term);
++      return matchesStatus && matchesSearch;
++    });
++  }, [state, search, statusFilter]);
++
++  return (
++    <>
++      <div className="page-header">
++        <div>
++          <h1>Missions</h1>
++          <p>Create and manage learning missions.</p>
++        </div>
++        <Link to="/admin/missions/create" className="primary-button">
++          Create mission <span>+</span>
++        </Link>
++      </div>
++
++      <div className="mission-list-toolbar">
++        <input
++          type="search"
++          placeholder="Search by title or category…"
++          value={search}
++          onChange={(event) => setSearch(event.target.value)}
++        />
++        <div className="status-filter-tabs">
++          {STATUS_FILTERS.map((filter) => (
++            <button
++              key={filter.value}
++              type="button"
++              className={statusFilter === filter.value ? 'selected' : ''}
++              onClick={() => setStatusFilter(filter.value)}
++            >
++              {filter.label}
++            </button>
++          ))}
++        </div>
++      </div>
++
++      {state.status === 'loading' && <div className="page-loader">Loading missions…</div>}
++
++      {state.status === 'error' && (
++        <div className="auth-error" role="alert">
++          {state.message}
++        </div>
++      )}
++
++      {state.status === 'loaded' && filteredMissions.length === 0 && (
++        <EmptyState
++          title="No missions found."
++          description={
++            state.missions.length === 0
++              ? 'Create your first mission to get started.'
++              : 'Try a different search or filter.'
++          }
++        />
++      )}
++
++      {state.status === 'loaded' && filteredMissions.length > 0 && (
++        <div className="mission-list-grid">
++          {filteredMissions.map((mission) => (
++            <MissionCard key={mission.id} mission={mission} />
++          ))}
++        </div>
++      )}
++    </>
++  );
++}
+diff --git a/src/router/AppRouter.tsx b/src/router/AppRouter.tsx
+index 6d7970c..146a5b8 100644
+--- a/src/router/AppRouter.tsx
++++ b/src/router/AppRouter.tsx
+@@ -1,6 +1,7 @@
+ import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom';
+ import { AdminDashboardPage, StudentDashboardPage } from '../features/dashboard';
+ import { ForgotPasswordPage, LoginPage } from '../features/authentication';
++import { AdminMissionListPage } from '../features/missions';
+ import { AppShell } from '../shared/layouts/AppShell';
+ import { AdminRoute } from './AdminRoute';
+ import { DashboardRedirect } from './DashboardRedirect';
+@@ -30,6 +31,7 @@ export function AppRouter() {
+             </Route>
+             <Route element={<AdminRoute />}>
+               <Route path="/admin/dashboard" element={<AdminDashboardPage />} />
++              <Route path="/admin/missions" element={<AdminMissionListPage />} />
+             </Route>
+           </Route>
+         </Route>
+diff --git a/src/shared/layouts/AppShell.tsx b/src/shared/layouts/AppShell.tsx
+index a53f612..c676568 100644
+--- a/src/shared/layouts/AppShell.tsx
++++ b/src/shared/layouts/AppShell.tsx
+@@ -9,7 +9,11 @@ export function AppShell() {
+       icon: '⌂',
+       to: user?.role === 'admin' ? '/admin/dashboard' : '/student/dashboard',
+     },
+-    { label: 'Missions', icon: '◈', to: '/missions' },
++    {
++      label: 'Missions',
++      icon: '◈',
++      to: user?.role === 'admin' ? '/admin/missions' : '/student/missions',
++    },
+     { label: 'Submissions', icon: '↗', to: '/submissions' },
+     { label: 'Resources', icon: '▤', to: '/resources' },
+   ];
+diff --git a/src/styles/globals.css b/src/styles/globals.css
+index d9983a5..b763e51 100644
+--- a/src/styles/globals.css
++++ b/src/styles/globals.css
+@@ -272,6 +272,121 @@ a {
+   font-size: 13px;
+   color: var(--muted);
+ }
++.page-header {
++  display: flex;
++  justify-content: space-between;
++  align-items: flex-start;
++  margin-bottom: 28px;
++}
++.page-header h1 {
++  font-size: 26px;
++  letter-spacing: -0.03em;
++  margin: 0 0 6px;
++}
++.page-header p {
++  margin: 0;
++  color: var(--muted);
++  font-size: 14px;
++}
++.mission-list-toolbar {
++  display: flex;
++  justify-content: space-between;
++  align-items: center;
++  gap: 16px;
++  margin-bottom: 20px;
++}
++.mission-list-toolbar input[type='search'] {
++  flex: 1;
++  max-width: 320px;
++  border: 1px solid var(--line);
++  border-radius: 8px;
++  padding: 10px 12px;
++  font-size: 13px;
++  font-family: inherit;
++}
++.mission-list-toolbar input[type='search']:focus {
++  outline: 2px solid var(--primary);
++  outline-offset: 1px;
++}
++.status-filter-tabs {
++  display: flex;
++  gap: 6px;
++}
++.status-filter-tabs button {
++  border: 1px solid var(--line);
++  background: #fff;
++  color: var(--muted);
++  border-radius: 7px;
++  padding: 8px 14px;
++  font-size: 12px;
++  font-weight: 650;
++}
++.status-filter-tabs button.selected {
++  background: var(--primary);
++  border-color: var(--primary);
++  color: #fff;
++}
++.mission-list-grid {
++  display: grid;
++  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
++  gap: 16px;
++}
++.mission-list-card {
++  background: #fff;
++  border: 1px solid var(--line);
++  border-radius: 10px;
++  padding: 20px;
++}
++.mission-list-card-header {
++  display: flex;
++  justify-content: space-between;
++  align-items: center;
++  margin-bottom: 14px;
++}
++.mission-difficulty {
++  font-size: 11px;
++  color: var(--muted);
++  font-weight: 650;
++}
++.mission-list-card h3 {
++  font-size: 16px;
++  margin: 0 0 8px;
++  letter-spacing: -0.02em;
++}
++.mission-list-card p {
++  font-size: 13px;
++  color: var(--muted);
++  margin: 0 0 16px;
++  display: -webkit-box;
++  -webkit-line-clamp: 2;
++  -webkit-box-orient: vertical;
++  overflow: hidden;
++}
++.mission-list-card footer {
++  display: flex;
++  justify-content: space-between;
++  color: var(--muted);
++  font-size: 12px;
++}
++.status-badge {
++  display: inline-block;
++  border-radius: 6px;
++  padding: 3px 9px;
++  font-size: 11px;
++  font-weight: 700;
++}
++.status-badge.status-draft {
++  background: #f1eef7;
++  color: #6b5aa3;
++}
++.status-badge.status-published {
++  background: #e5f4ea;
++  color: #23865a;
++}
++.status-badge.status-archived {
++  background: #f1f0f2;
++  color: var(--muted);
++}
+ .page-loader,
+ .error-state {
+   min-height: 100vh;

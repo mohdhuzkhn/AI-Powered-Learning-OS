@@ -1,6 +1,7 @@
 import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom';
 import { AdminDashboardPage, StudentDashboardPage } from '../features/dashboard';
 import { ForgotPasswordPage, LoginPage } from '../features/authentication';
+import { AdminMissionListPage } from '../features/missions';
 import { AppShell } from '../shared/layouts/AppShell';
 import { AdminRoute } from './AdminRoute';
 import { DashboardRedirect } from './DashboardRedirect';
@@ -30,6 +31,7 @@ export function AppRouter() {
             </Route>
             <Route element={<AdminRoute />}>
               <Route path="/admin/dashboard" element={<AdminDashboardPage />} />
+              <Route path="/admin/missions" element={<AdminMissionListPage />} />
             </Route>
           </Route>
         </Route>

@@ -9,7 +9,11 @@ export function AppShell() {
       icon: '⌂',
       to: user?.role === 'admin' ? '/admin/dashboard' : '/student/dashboard',
     },
-    { label: 'Missions', icon: '◈', to: '/missions' },
+    {
+      label: 'Missions',
+      icon: '◈',
+      to: user?.role === 'admin' ? '/admin/missions' : '/student/missions',
+    },
     { label: 'Submissions', icon: '↗', to: '/submissions' },
     { label: 'Resources', icon: '▤', to: '/resources' },
   ];
