@@ -24,4 +24,5 @@ export const missionFormSchema = z.object({
   status: z.enum(['draft', 'published']),
 });
 
-export type MissionFormValues = z.infer<typeof missionFormSchema>;
+export type MissionFormInput = z.input<typeof missionFormSchema>;
+export type MissionFormValues = z.output<typeof missionFormSchema>;

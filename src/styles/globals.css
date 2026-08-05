@@ -194,6 +194,10 @@ a {
   white-space: nowrap;
   text-decoration: none;
 }
+.primary-button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
 .primary-button span {
   font-size: 17px;
   margin-left: 9px;
@@ -386,6 +390,74 @@ a {
 .status-badge.status-archived {
   background: #f1f0f2;
   color: var(--muted);
+}
+.mission-form {
+  background: #fff;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 28px;
+  max-width: 640px;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+.form-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 18px;
+}
+.form-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 13px;
+  color: var(--ink);
+  font-weight: 600;
+}
+.form-field input,
+.form-field textarea,
+.form-field select {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 10px 12px;
+  font-size: 14px;
+  font-family: inherit;
+  font-weight: 400;
+  color: var(--ink);
+  background: #fff;
+}
+.form-field textarea {
+  resize: vertical;
+  min-height: 100px;
+}
+.form-field input:focus,
+.form-field textarea:focus,
+.form-field select:focus {
+  outline: 2px solid var(--primary);
+  outline-offset: 1px;
+}
+.form-field-error {
+  color: #a4293d;
+  font-size: 12px;
+  font-weight: 500;
+}
+.form-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+  margin-top: 8px;
+}
+.secondary-button {
+  border: 1px solid var(--line);
+  background: #fff;
+  color: var(--ink);
+  border-radius: 8px;
+  padding: 12px 16px;
+  font-size: 13px;
+  font-weight: 700;
+}
+.secondary-button:hover {
+  background: #f5f4f8;
 }
 .page-loader,
 .error-state {
