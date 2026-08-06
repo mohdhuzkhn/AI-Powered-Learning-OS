@@ -67,3 +67,18 @@ export interface NewMissionInput {
 export type MissionUpdateInput = Partial<
   Pick<Mission, 'title' | 'description' | 'category' | 'difficulty' | 'deadline' | 'status'>
 >;
+
+/**
+ * A record that a mission was assigned to a student. Deliberately minimal
+ * — per docs/04-Engineering/01-System-Architecture.md §3.9 (Aggregate
+ * Design), assignments belong to the Mission aggregate, but SUBMISSION
+ * status belongs entirely to the separate submissions collection (M5).
+ * This never duplicates or tracks progress/completion state.
+ */
+export interface MissionAssignment {
+  id: string;
+  missionId: string;
+  studentId: string;
+  assignedBy: string;
+  assignedAt: Date;
+}

@@ -168,6 +168,16 @@ export const AuthService = {
     return UserRepository.countActiveByRole(role);
   },
 
+  /** Lists active users with the given role — e.g. the mission-assignment student picker. */
+  async listActiveUsersByRole(role: UserRole): Promise<AppUser[]> {
+    return UserRepository.listActiveByRole(role);
+  },
+
+  /** Looks up a single user profile — e.g. validating an assignment target exists. */
+  async getUserProfile(uid: string): Promise<AppUser | null> {
+    return UserRepository.findByUid(uid);
+  },
+
   async signInWithGoogle(): Promise<AppUser> {
     return signInAndResolve(
       async () => (await signInWithPopup(requireAuth(), new GoogleAuthProvider())).user,

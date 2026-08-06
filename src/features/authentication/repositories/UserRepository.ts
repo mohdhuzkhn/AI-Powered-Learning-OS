@@ -3,6 +3,7 @@ import {
   doc,
   getCountFromServer,
   getDoc,
+  getDocs,
   query,
   setDoc,
   updateDoc,
@@ -118,5 +119,26 @@ export const UserRepository = {
     );
     const snapshot = await getCountFromServer(activeUsersOfRole);
     return snapshot.data().count;
+  },
+
+  /**
+   * Lists active users with the given role — e.g. the student picker when
+   * assigning a mission. No `orderBy` here deliberately: adding one would
+   * require a new composite index (equality + orderBy on a different
+   * field, same situation as MissionRepository.listPublished). Sorted
+   * client-side instead — cheap at Phase 1's expected user counts.
+   */
+  async listActiveByRole(role: UserRole): Promise<AppUser[]> {
+    const db = requireDb();
+    const snapshot = await getDocs(
+      query(
+        collection(db, USERS_COLLECTION),
+        where('role', '==', role),
+        where('status', '==', 'active'),
+      ),
+    );
+    return snapshot.docs
+      .map((document) => toAppUser(document.id, document.data() as UserDocument))
+      .sort((a, b) => a.fullName.localeCompare(b.fullName));
   },
 };

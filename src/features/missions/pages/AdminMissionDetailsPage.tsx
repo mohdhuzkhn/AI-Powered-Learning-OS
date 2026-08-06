@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { useAuth } from '../../../hooks/useAuth';
+import { MissionAssignmentPanel } from '../components/MissionAssignmentPanel';
 import { MissionError, MissionService } from '../services/MissionService';
 import type { Mission } from '../types/mission.types';
 
@@ -132,6 +133,8 @@ export function AdminMissionDetailsPage() {
         <h2>Description</h2>
         <p>{mission.description}</p>
       </div>
+
+      <MissionAssignmentPanel mission={mission} />
 
       <Link to="/admin/missions" className="auth-back-link">
         ← Back to missions

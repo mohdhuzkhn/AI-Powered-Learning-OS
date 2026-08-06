@@ -77,5 +77,26 @@ service cloud.firestore {
       // as users.
       allow delete: if false;
     }
+
+    match /missionAssignments/{assignmentId} {
+      // A student may read only their own assignments; an admin may read
+      // any. Both single-doc gets and collection queries follow the same
+      // rule — for `list`, the client's query must include
+      // where('studentId','==', request.auth.uid) so Firestore can prove
+      // every possible result satisfies this per-document check.
+      allow get, list: if isActiveAdmin()
+                       || (request.auth != null && resource.data.studentId == request.auth.uid);
+
+      // Only admins assign missions. MissionService.assignMission already
+      // validates the mission is published and the student is active
+      // before this write ever happens — this rule is the authorization
+      // boundary, not the full business-rule set.
+      allow create: if isActiveAdmin();
+
+      // Assignments are immutable once created in Phase 1 — no partial
+      // updates, no client-side unassign yet.
+      allow update: if false;
+      allow delete: if false;
+    }
   }
 }

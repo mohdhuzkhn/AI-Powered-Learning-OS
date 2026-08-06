@@ -1,6 +1,13 @@
+import { AuthService } from '../../authentication/services/AuthService';
 import type { AppUser } from '../../../types/user.types';
+import { MissionAssignmentRepository } from '../repositories/MissionAssignmentRepository';
 import { MissionRepository } from '../repositories/MissionRepository';
-import type { Mission, MissionUpdateInput, NewMissionInput } from '../types/mission.types';
+import type {
+  Mission,
+  MissionAssignment,
+  MissionUpdateInput,
+  NewMissionInput,
+} from '../types/mission.types';
 
 /**
  * Business-friendly error thrown by every MissionService method — mirrors
@@ -91,5 +98,39 @@ export const MissionService = {
 
   async listPublishedMissions(): Promise<Mission[]> {
     return MissionRepository.listPublished();
+  },
+
+  /**
+   * Assigns a mission to a student. Enforces BR-MIS-003 ("Only Published
+   * missions can be assigned") and validates the target is an actual
+   * active student — never trusts a studentId the client happened to send
+   * (docs/.ai/architecture/07-Security.md: "never trust the client").
+   * Goes through AuthService, not UserRepository directly, per the
+   * cross-feature dependency rule.
+   */
+  async assignMission(actor: AppUser, missionId: string, studentId: string): Promise<MissionAssignment> {
+    assertAdmin(actor);
+
+    const [mission, student] = await Promise.all([
+      MissionRepository.findById(missionId),
+      AuthService.getUserProfile(studentId),
+    ]);
+
+    if (!mission) {
+      throw new MissionError('Mission not found.', 'NOT_FOUND');
+    }
+    if (mission.status !== 'published') {
+      throw new MissionError('Only published missions can be assigned.', 'MISSION_NOT_PUBLISHED');
+    }
+    if (!student || student.role !== 'student' || student.status !== 'active') {
+      throw new MissionError('Selected student is not available for assignment.', 'INVALID_STUDENT');
+    }
+
+    return MissionAssignmentRepository.create(missionId, studentId, actor.uid);
+  },
+
+  async listAssignedStudents(actor: AppUser, missionId: string): Promise<MissionAssignment[]> {
+    assertAdmin(actor);
+    return MissionAssignmentRepository.listByMission(missionId);
   },
 };
