@@ -133,4 +133,46 @@ export const MissionService = {
     assertAdmin(actor);
     return MissionAssignmentRepository.listByMission(missionId);
   },
+
+  /**
+   * Missions assigned to the current student. No admin check — any
+   * authenticated student may see their own assignments, matches
+   * firestore.rules' `resource.data.studentId == request.auth.uid`.
+   * Archived missions are excluded — BR-MIS-005 ("Deleted missions are
+   * hidden from users") applies here; archiving is the soft-delete
+   * mechanism, so an archived mission should disappear from the
+   * student's view even if they were previously assigned to it. The
+   * audit trail Database-Design.md describes is an admin-facing concern
+   * (admins retain full visibility via listAssignedStudents), not a
+   * student-facing one.
+   */
+  async listMyAssignedMissions(actor: AppUser): Promise<Mission[]> {
+    const assignments = await MissionAssignmentRepository.listByStudent(actor.uid);
+    const missions = await Promise.all(
+      assignments.map((assignment) => MissionRepository.findById(assignment.missionId)),
+    );
+    return missions.filter(
+      (mission): mission is Mission => mission !== null && mission.status === 'published',
+    );
+  },
+
+  /**
+   * A single mission, scoped to the student actually being assigned to
+   * it — not just "any published mission," even though firestore.rules'
+   * baseline permission would technically allow reading any published
+   * mission by ID. This extra restriction lives here deliberately: a
+   * student typing another mission's ID into the URL should see "not
+   * found," not a mission they were never assigned. Archived missions
+   * are treated as not-found too, for the same reason as
+   * listMyAssignedMissions above.
+   */
+  async getAssignedMissionForStudent(actor: AppUser, missionId: string): Promise<Mission | null> {
+    const assignment = await MissionAssignmentRepository.findAssignment(missionId, actor.uid);
+    if (!assignment) return null;
+
+    const mission = await MissionRepository.findById(missionId);
+    if (!mission || mission.status === 'archived') return null;
+
+    return mission;
+  },
 };

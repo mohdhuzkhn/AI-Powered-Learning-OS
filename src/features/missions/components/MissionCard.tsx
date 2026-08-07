@@ -11,9 +11,9 @@ function formatDeadline(deadline: Date): string {
   return deadline.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
 }
 
-export function MissionCard({ mission }: { mission: Mission }) {
+export function MissionCard({ mission, to }: { mission: Mission; to: string }) {
   return (
-    <Link to={`/admin/missions/${mission.id}`} className="mission-list-card">
+    <Link to={to} className="mission-list-card">
       <div className="mission-list-card-header">
         <span className={`status-badge status-${mission.status}`}>{STATUS_LABELS[mission.status]}</span>
         <span className="mission-difficulty">{mission.difficulty}</span>

@@ -75,4 +75,33 @@ export const MissionAssignmentRepository = {
     );
     return snapshot.docs.map((d) => toAssignment(d.id, d.data() as MissionAssignmentDocument));
   },
+
+  /**
+   * Checks whether a specific student is assigned to a specific mission.
+   *
+   * Subtle Firestore behavior: firestore.rules' `get` on this collection
+   * checks `resource.data.studentId == request.auth.uid`, which requires
+   * reading the document to evaluate. If the assignment doesn't exist,
+   * Firestore can't prove the check either way and denies with
+   * `permission-denied` — NOT a clean "not found" snapshot. In this
+   * context that's equivalent to "not assigned," so it's translated to
+   * null rather than left to bubble up as an unexpected error.
+   */
+  async findAssignment(missionId: string, studentId: string): Promise<MissionAssignment | null> {
+    const db = requireDb();
+    const ref = doc(db, ASSIGNMENTS_COLLECTION, assignmentId(missionId, studentId));
+
+    try {
+      const snapshot = await getDoc(ref);
+      if (!snapshot.exists()) return null;
+      return toAssignment(snapshot.id, snapshot.data() as MissionAssignmentDocument);
+    } catch (error) {
+      const code =
+        typeof error === 'object' && error !== null && 'code' in error
+          ? String((error as { code: unknown }).code)
+          : '';
+      if (code === 'permission-denied') return null;
+      throw error;
+    }
+  },
 };

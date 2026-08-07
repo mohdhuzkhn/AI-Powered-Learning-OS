@@ -1,7 +1,13 @@
 import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom';
 import { AdminDashboardPage, StudentDashboardPage } from '../features/dashboard';
 import { ForgotPasswordPage, LoginPage } from '../features/authentication';
-import { AdminMissionDetailsPage, AdminMissionListPage, MissionFormPage } from '../features/missions';
+import {
+  AdminMissionDetailsPage,
+  AdminMissionListPage,
+  MissionFormPage,
+  StudentMissionDetailsPage,
+  StudentMissionListPage,
+} from '../features/missions';
 import { AppShell } from '../shared/layouts/AppShell';
 import { AdminRoute } from './AdminRoute';
 import { DashboardRedirect } from './DashboardRedirect';
@@ -28,6 +34,8 @@ export function AppRouter() {
           <Route element={<AppShell />}>
             <Route element={<StudentRoute />}>
               <Route path="/student/dashboard" element={<StudentDashboardPage />} />
+              <Route path="/student/missions" element={<StudentMissionListPage />} />
+              <Route path="/student/missions/:missionId" element={<StudentMissionDetailsPage />} />
             </Route>
             <Route element={<AdminRoute />}>
               <Route path="/admin/dashboard" element={<AdminDashboardPage />} />

@@ -1,9 +1,8 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Link } from 'react-router-dom';
 import { useAuth } from '../../../hooks/useAuth';
 import { EmptyState } from '../../../shared/components/EmptyState';
 import { MissionService } from '../services/MissionService';
-import type { Mission, MissionStatus } from '../types/mission.types';
+import type { Mission } from '../types/mission.types';
 import { MissionCard } from '../components/MissionCard';
 
 type ListState =
@@ -11,27 +10,16 @@ type ListState =
   | { status: 'loaded'; missions: Mission[] }
   | { status: 'error'; message: string };
 
-const STATUS_FILTERS: Array<{ label: string; value: MissionStatus | 'all' }> = [
-  { label: 'All', value: 'all' },
-  { label: 'Draft', value: 'draft' },
-  { label: 'Published', value: 'published' },
-  { label: 'Archived', value: 'archived' },
-];
-
-export function AdminMissionListPage() {
+export function StudentMissionListPage() {
   const { user } = useAuth();
   const [state, setState] = useState<ListState>({ status: 'loading' });
   const [search, setSearch] = useState('');
-  const [statusFilter, setStatusFilter] = useState<MissionStatus | 'all'>('all');
 
   useEffect(() => {
-    // AdminRoute already guarantees an admin user by the time this
-    // renders — this guard is for TypeScript's benefit, not a real
-    // runtime possibility.
     if (!user) return;
     let cancelled = false;
 
-    MissionService.listAllMissions(user)
+    MissionService.listMyAssignedMissions(user)
       .then((missions) => {
         if (!cancelled) setState({ status: 'loaded', missions });
       })
@@ -53,27 +41,20 @@ export function AdminMissionListPage() {
   const filteredMissions = useMemo(() => {
     if (state.status !== 'loaded') return [];
     const term = search.trim().toLowerCase();
-
-    return state.missions.filter((mission) => {
-      const matchesStatus = statusFilter === 'all' || mission.status === statusFilter;
-      const matchesSearch =
-        term.length === 0 ||
-        mission.title.toLowerCase().includes(term) ||
-        mission.category.toLowerCase().includes(term);
-      return matchesStatus && matchesSearch;
-    });
-  }, [state, search, statusFilter]);
+    if (term.length === 0) return state.missions;
+    return state.missions.filter(
+      (mission) =>
+        mission.title.toLowerCase().includes(term) || mission.category.toLowerCase().includes(term),
+    );
+  }, [state, search]);
 
   return (
     <>
       <div className="page-header">
         <div>
-          <h1>Missions</h1>
-          <p>Create and manage learning missions.</p>
+          <h1>My missions</h1>
+          <p>Missions assigned to you.</p>
         </div>
-        <Link to="/admin/missions/create" className="primary-button">
-          Create mission <span>+</span>
-        </Link>
       </div>
 
       <div className="mission-list-toolbar">
@@ -83,18 +64,6 @@ export function AdminMissionListPage() {
           value={search}
           onChange={(event) => setSearch(event.target.value)}
         />
-        <div className="status-filter-tabs">
-          {STATUS_FILTERS.map((filter) => (
-            <button
-              key={filter.value}
-              type="button"
-              className={statusFilter === filter.value ? 'selected' : ''}
-              onClick={() => setStatusFilter(filter.value)}
-            >
-              {filter.label}
-            </button>
-          ))}
-        </div>
       </div>
 
       {state.status === 'loading' && <div className="page-loader">Loading missions…</div>}
@@ -107,19 +76,15 @@ export function AdminMissionListPage() {
 
       {state.status === 'loaded' && filteredMissions.length === 0 && (
         <EmptyState
-          title="No missions found."
-          description={
-            state.missions.length === 0
-              ? 'Create your first mission to get started.'
-              : 'Try a different search or filter.'
-          }
+          title="No missions assigned."
+          description={state.missions.length === 0 ? 'Enjoy your free time!' : 'Try a different search.'}
         />
       )}
 
       {state.status === 'loaded' && filteredMissions.length > 0 && (
         <div className="mission-list-grid">
           {filteredMissions.map((mission) => (
-            <MissionCard key={mission.id} mission={mission} to={`/admin/missions/${mission.id}`} />
+            <MissionCard key={mission.id} mission={mission} to={`/student/missions/${mission.id}`} />
           ))}
         </div>
       )}
