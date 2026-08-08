@@ -1,0 +1,32 @@
+rules_version = '2';
+
+service firebase.storage {
+  match /b/{bucket}/o {
+
+    // Storage rules can read Firestore via the firestore.* namespace —
+    // this cross-checks the requester's own profile the same way
+    // firestore.rules' isActiveAdmin() does.
+    function isActiveAdmin() {
+      let requester = firestore.get(/databases/(default)/documents/users/$(request.auth.uid)).data;
+      return request.auth != null && requester.role == 'admin' && requester.status == 'active';
+    }
+
+    // docs/03-Features/04-Submission-System.md: "submissions/{studentId}/{assignmentId}/screenshot.png"
+    match /submissions/{studentId}/{assignmentId}/{fileName} {
+      // Students read only their own screenshots; admins read all —
+      // matches docs/03-Features/01-Authentication.md's Storage Rules:
+      // "Students can upload only their own submission files. Admins can
+      // read all submission files."
+      allow read: if request.auth != null && (request.auth.uid == studentId || isActiveAdmin());
+
+      // Students upload only to their own path. Validation rules from
+      // docs/03-Features/04-Submission-System.md: image only, max 5MB.
+      allow write: if request.auth != null
+                   && request.auth.uid == studentId
+                   && request.resource.size < 5 * 1024 * 1024
+                   && request.resource.contentType.matches('image/.*');
+
+      allow delete: if false;
+    }
+  }
+}

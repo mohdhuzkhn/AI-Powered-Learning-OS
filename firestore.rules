@@ -98,5 +98,41 @@ service cloud.firestore {
       allow update: if false;
       allow delete: if false;
     }
+
+    match /submissions/{assignmentId} {
+      // Same pattern as missionAssignments: a student sees only their
+      // own submissions, an admin sees all.
+      allow get, list: if isActiveAdmin()
+                       || (request.auth != null && resource.data.studentId == request.auth.uid);
+
+      // A student may create a submission for themselves, but ONLY for
+      // an assignment that genuinely exists and genuinely belongs to
+      // them — the doc ID (assignmentId) alone doesn't prove that
+      // without this cross-reference. Without it, nothing stops someone
+      // from crafting a submission against an assignmentId that was
+      // never actually assigned to them.
+      allow create: if request.auth != null
+                    && request.auth.uid == request.resource.data.studentId
+                    && request.resource.data.status == 'submitted'
+                    && get(/databases/$(database)/documents/missionAssignments/$(assignmentId)).data.studentId
+                       == request.auth.uid;
+
+      // Two very different kinds of update share this collection:
+      // - Resubmission: the student who owns a REJECTED submission may
+      //   overwrite it, but only back to 'submitted' — never straight to
+      //   'approved' (that would let a student self-approve).
+      // - Review: an admin may set the decision (approved/rejected) and
+      //   feedback. SubmissionService enforces the deeper rule that
+      //   approved submissions can never be edited again (BR-SUB-005) —
+      //   this rule is the authorization boundary, not the full
+      //   business-rule set.
+      allow update: if isActiveAdmin()
+                    || (request.auth != null
+                        && request.auth.uid == resource.data.studentId
+                        && resource.data.status == 'rejected'
+                        && request.resource.data.status == 'submitted');
+
+      allow delete: if false;
+    }
   }
 }
