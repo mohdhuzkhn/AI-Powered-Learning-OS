@@ -166,14 +166,17 @@ export const MissionService = {
    * are treated as not-found too, for the same reason as
    * listMyAssignedMissions above.
    */
-  async getAssignedMissionForStudent(actor: AppUser, missionId: string): Promise<Mission | null> {
+  async getAssignedMissionForStudent(
+    actor: AppUser,
+    missionId: string,
+  ): Promise<{ mission: Mission; assignmentId: string } | null> {
     const assignment = await MissionAssignmentRepository.findAssignment(missionId, actor.uid);
     if (!assignment) return null;
 
     const mission = await MissionRepository.findById(missionId);
     if (!mission || mission.status === 'archived') return null;
 
-    return mission;
+    return { mission, assignmentId: assignment.id };
   },
 
   /**

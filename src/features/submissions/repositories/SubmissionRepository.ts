@@ -59,12 +59,32 @@ function toSubmission(id: string, data: SubmissionDocument): Submission {
  * submissions are immutable") — that belongs to SubmissionService.
  */
 export const SubmissionRepository = {
-  /** Null means "Not Started" — no submission document exists yet. */
+  /**
+   * Null means "Not Started" — no submission document exists yet.
+   *
+   * Subtle Firestore behavior (same issue already solved in
+   * MissionAssignmentRepository.findAssignment): firestore.rules' `get`
+   * on this collection checks `resource.data.studentId == request.auth.uid`,
+   * which requires reading the document to evaluate. If no submission
+   * exists yet, Firestore can't prove that check either way and denies
+   * with `permission-denied` — NOT a clean "not found" snapshot. Without
+   * this catch, every student's very first visit to an unsubmitted
+   * mission would show a permission error instead of the submission form.
+   */
   async findByAssignment(assignmentId: string): Promise<Submission | null> {
     const db = requireDb();
-    const snapshot = await getDoc(doc(db, SUBMISSIONS_COLLECTION, assignmentId));
-    if (!snapshot.exists()) return null;
-    return toSubmission(snapshot.id, snapshot.data() as SubmissionDocument);
+    try {
+      const snapshot = await getDoc(doc(db, SUBMISSIONS_COLLECTION, assignmentId));
+      if (!snapshot.exists()) return null;
+      return toSubmission(snapshot.id, snapshot.data() as SubmissionDocument);
+    } catch (error) {
+      const code =
+        typeof error === 'object' && error !== null && 'code' in error
+          ? String((error as { code: unknown }).code)
+          : '';
+      if (code === 'permission-denied') return null;
+      throw error;
+    }
   },
 
   async create(input: NewSubmissionInput, studentId: string): Promise<Submission> {

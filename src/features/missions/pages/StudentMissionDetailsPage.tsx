@@ -1,12 +1,13 @@
 import { useEffect, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { useAuth } from '../../../hooks/useAuth';
+import { SubmissionPanel } from '../../submissions/components/SubmissionPanel';
 import { MissionService } from '../services/MissionService';
 import type { Mission } from '../types/mission.types';
 
 type DetailsState =
   | { status: 'loading' }
-  | { status: 'loaded'; mission: Mission }
+  | { status: 'loaded'; mission: Mission; assignmentId: string }
   | { status: 'not-found' }
   | { status: 'error'; message: string };
 
@@ -30,9 +31,13 @@ export function StudentMissionDetailsPage() {
     let cancelled = false;
 
     MissionService.getAssignedMissionForStudent(user, missionId)
-      .then((mission) => {
+      .then((result) => {
         if (cancelled) return;
-        setState(mission ? { status: 'loaded', mission } : { status: 'not-found' });
+        setState(
+          result
+            ? { status: 'loaded', mission: result.mission, assignmentId: result.assignmentId }
+            : { status: 'not-found' },
+        );
       })
       .catch((error: unknown) => {
         console.error('Failed to load mission:', error);
@@ -72,7 +77,7 @@ export function StudentMissionDetailsPage() {
     );
   }
 
-  const { mission } = state;
+  const { mission, assignmentId } = state;
 
   return (
     <>
@@ -91,10 +96,7 @@ export function StudentMissionDetailsPage() {
         <p>{mission.description}</p>
       </div>
 
-      <div className="mission-details-card">
-        <h2>Submission</h2>
-        <p className="assignment-hint">Submitting your work isn&apos;t available yet — coming soon.</p>
-      </div>
+      <SubmissionPanel mission={mission} assignmentId={assignmentId} />
 
       <Link to="/student/missions" className="auth-back-link">
         ← Back to missions
