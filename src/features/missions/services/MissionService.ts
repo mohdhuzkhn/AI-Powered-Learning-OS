@@ -175,4 +175,14 @@ export const MissionService = {
 
     return mission;
   },
+
+  /**
+   * Thin passthrough so other features (SubmissionService) can verify an
+   * assignment's ownership without reaching into MissionAssignmentRepository
+   * directly — same cross-feature-goes-through-a-service rule as everywhere
+   * else in this codebase.
+   */
+  async getAssignmentById(assignmentId: string): Promise<MissionAssignment | null> {
+    return MissionAssignmentRepository.findById(assignmentId);
+  },
 };

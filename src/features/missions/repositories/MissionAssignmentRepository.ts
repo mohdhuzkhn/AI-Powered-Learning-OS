@@ -104,4 +104,25 @@ export const MissionAssignmentRepository = {
       throw error;
     }
   },
+
+  /** Direct lookup by the assignment's own ID — used when a caller (e.g.
+   *  SubmissionService) already has an assignmentId rather than a
+   *  missionId+studentId pair. Same permission-denied-as-null handling. */
+  async findById(assignmentId: string): Promise<MissionAssignment | null> {
+    const db = requireDb();
+    const ref = doc(db, ASSIGNMENTS_COLLECTION, assignmentId);
+
+    try {
+      const snapshot = await getDoc(ref);
+      if (!snapshot.exists()) return null;
+      return toAssignment(snapshot.id, snapshot.data() as MissionAssignmentDocument);
+    } catch (error) {
+      const code =
+        typeof error === 'object' && error !== null && 'code' in error
+          ? String((error as { code: unknown }).code)
+          : '';
+      if (code === 'permission-denied') return null;
+      throw error;
+    }
+  },
 };
