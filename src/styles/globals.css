@@ -585,6 +585,46 @@ a {
   font-size: 13px;
   font-family: inherit;
 }
+.review-queue-list {
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  overflow: hidden;
+  background: #fff;
+}
+.review-queue-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 15px 18px;
+  border-bottom: 1px solid var(--line);
+  text-decoration: none;
+  color: inherit;
+  transition: background 0.15s ease;
+}
+.review-queue-row:last-child {
+  border: 0;
+}
+.review-queue-row:hover {
+  background: var(--canvas);
+}
+.review-queue-row strong,
+.review-queue-row span {
+  display: block;
+}
+.review-queue-row strong {
+  font-size: 13px;
+}
+.review-queue-row > div > span {
+  margin-top: 3px;
+  color: var(--muted);
+  font-size: 12px;
+}
+.review-queue-date {
+  margin-left: auto;
+  color: var(--muted);
+  font-size: 12px;
+  white-space: nowrap;
+}
 .page-loader,
 .error-state {
   min-height: 100vh;

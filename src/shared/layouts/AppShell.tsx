@@ -14,7 +14,11 @@ export function AppShell() {
       icon: '◈',
       to: user?.role === 'admin' ? '/admin/missions' : '/student/missions',
     },
-    { label: 'Submissions', icon: '↗', to: '/submissions' },
+    {
+      label: 'Submissions',
+      icon: '↗',
+      to: user?.role === 'admin' ? '/admin/submissions' : '/student/submissions',
+    },
     { label: 'Resources', icon: '▤', to: '/resources' },
   ];
 

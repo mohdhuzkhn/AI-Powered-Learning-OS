@@ -8,6 +8,7 @@ import {
   StudentMissionDetailsPage,
   StudentMissionListPage,
 } from '../features/missions';
+import { AdminSubmissionQueuePage } from '../features/submissions';
 import { AppShell } from '../shared/layouts/AppShell';
 import { AdminRoute } from './AdminRoute';
 import { DashboardRedirect } from './DashboardRedirect';
@@ -43,6 +44,7 @@ export function AppRouter() {
               <Route path="/admin/missions/create" element={<MissionFormPage />} />
               <Route path="/admin/missions/:missionId/edit" element={<MissionFormPage />} />
               <Route path="/admin/missions/:missionId" element={<AdminMissionDetailsPage />} />
+              <Route path="/admin/submissions" element={<AdminSubmissionQueuePage />} />
             </Route>
           </Route>
         </Route>
