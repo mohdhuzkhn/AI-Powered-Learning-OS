@@ -83,6 +83,12 @@ export const SubmissionService = {
     return submission;
   },
 
+  /** Admin-scoped lookup — any submission, not just the caller's own. */
+  async getSubmissionForReview(actor: AppUser, assignmentId: string): Promise<Submission | null> {
+    assertAdmin(actor);
+    return SubmissionRepository.findByAssignment(assignmentId);
+  },
+
   /** BR-SUB-005: approved submissions are immutable — reviewing one again is rejected. */
   async reviewSubmission(
     actor: AppUser,

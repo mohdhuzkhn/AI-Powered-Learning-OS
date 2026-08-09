@@ -5,10 +5,6 @@ const MAX_SCREENSHOT_BYTES = 5 * 1024 * 1024;
 /**
  * Matches docs/03-Features/04-Submission-System.md's Validation Rules:
  * screenshot required/image only/max 5MB, description required/max 2000.
- */
-/**
- * Matches docs/03-Features/04-Submission-System.md's Validation Rules:
- * screenshot required/image only/max 5MB, description required/max 2000.
  *
  * `screenshot` validates a FileList (what react-hook-form's native file
  * input registration actually reports — `{...register('screenshot')}` on
@@ -36,14 +32,17 @@ export type SubmissionFormInput = z.input<typeof submissionFormSchema>;
 export type SubmissionFormValues = z.output<typeof submissionFormSchema>;
 
 /**
- * BR-SUB-007 ("every review should contain a decision") is enforced by
- * `decision` being a required enum, not optional. Feedback itself isn't
- * marked mandatory anywhere in the spec, so it stays optional here —
- * capped at the same length as the submission description for consistency.
+ * The admin review form only ever collects feedback — the decision
+ * (approved/rejected) comes from which of two separate buttons the admin
+ * clicks, not from a form field, so it has no place in this schema.
+ * BR-SUB-007 ("every review should contain a decision") is still
+ * enforced — SubmissionReviewInput requires `decision` as a mandatory
+ * TypeScript field regardless of how the UI supplies it, which is a
+ * stronger guarantee than a Zod field would add here. Feedback itself
+ * isn't marked mandatory anywhere in the spec, so it stays optional.
  */
-export const reviewFormSchema = z.object({
-  decision: z.enum(['approved', 'rejected']),
+export const reviewFeedbackSchema = z.object({
   feedback: z.string().max(2000, 'Feedback must be 2000 characters or fewer.'),
 });
 
-export type ReviewFormValues = z.infer<typeof reviewFormSchema>;
+export type ReviewFeedbackValues = z.infer<typeof reviewFeedbackSchema>;

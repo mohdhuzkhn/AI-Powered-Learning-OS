@@ -1,0 +1,287 @@
+diff --git a/src/features/submissions/index.ts b/src/features/submissions/index.ts
+index a38d29d..1417b8b 100644
+--- a/src/features/submissions/index.ts
++++ b/src/features/submissions/index.ts
+@@ -1 +1,2 @@
+ export { AdminSubmissionQueuePage } from './pages/AdminSubmissionQueuePage';
++export { AdminSubmissionReviewPage } from './pages/AdminSubmissionReviewPage';
+diff --git a/src/features/submissions/pages/AdminSubmissionReviewPage.tsx b/src/features/submissions/pages/AdminSubmissionReviewPage.tsx
+new file mode 100644
+index 0000000..5ee234f
+--- /dev/null
++++ b/src/features/submissions/pages/AdminSubmissionReviewPage.tsx
+@@ -0,0 +1,196 @@
++import { useEffect, useState } from 'react';
++import { Link, useParams } from 'react-router-dom';
++import { useForm } from 'react-hook-form';
++import { zodResolver } from '@hookform/resolvers/zod';
++import { useAuth } from '../../../hooks/useAuth';
++import { AuthService } from '../../authentication/services/AuthService';
++import { MissionService } from '../../missions/services/MissionService';
++import type { Mission } from '../../missions/types/mission.types';
++import type { AppUser } from '../../../types/user.types';
++import { SubmissionError, SubmissionService } from '../services/SubmissionService';
++import { reviewFeedbackSchema, type ReviewFeedbackValues } from '../validators/submission.validator';
++import type { Submission, SubmissionStatus } from '../types/submission.types';
++
++type PageState =
++  | { status: 'loading' }
++  | { status: 'loaded'; submission: Submission; student: AppUser | null; mission: Mission | null }
++  | { status: 'not-found' }
++  | { status: 'error'; message: string };
++
++const STATUS_LABELS: Record<SubmissionStatus, string> = {
++  submitted: 'Submitted — awaiting review',
++  approved: 'Approved',
++  rejected: 'Rejected',
++};
++
++function formatDate(date: Date): string {
++  return date.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
++}
++
++export function AdminSubmissionReviewPage() {
++  const { assignmentId } = useParams<{ assignmentId: string }>();
++  const { user } = useAuth();
++  const [state, setState] = useState<PageState>({ status: 'loading' });
++  const [isReviewing, setIsReviewing] = useState(false);
++  const [reviewError, setReviewError] = useState<string | null>(null);
++
++  const {
++    register,
++    handleSubmit,
++    formState: { errors },
++  } = useForm<ReviewFeedbackValues>({
++    resolver: zodResolver(reviewFeedbackSchema),
++    defaultValues: { feedback: '' },
++  });
++
++  useEffect(() => {
++    if (!user || !assignmentId) return;
++    let cancelled = false;
++
++    SubmissionService.getSubmissionForReview(user, assignmentId)
++      .then(async (submission) => {
++        if (!submission) {
++          if (!cancelled) setState({ status: 'not-found' });
++          return;
++        }
++        const [student, mission] = await Promise.all([
++          AuthService.getUserProfile(submission.studentId),
++          MissionService.getMission(submission.missionId),
++        ]);
++        if (!cancelled) setState({ status: 'loaded', submission, student, mission });
++      })
++      .catch((error: unknown) => {
++        console.error('Failed to load submission:', error);
++        if (!cancelled) {
++          setState({
++            status: 'error',
++            message: error instanceof Error ? error.message : 'Failed to load submission.',
++          });
++        }
++      });
++
++    return () => {
++      cancelled = true;
++    };
++  }, [user, assignmentId]);
++
++  const onDecide = async (decision: 'approved' | 'rejected', values: ReviewFeedbackValues) => {
++    if (!user || !assignmentId || state.status !== 'loaded') return;
++    setIsReviewing(true);
++    setReviewError(null);
++
++    try {
++      const submission = await SubmissionService.reviewSubmission(user, assignmentId, {
++        decision,
++        feedback: values.feedback,
++      });
++      setState({ ...state, submission });
++    } catch (error) {
++      setReviewError(
++        error instanceof SubmissionError ? error.message : 'Unable to submit review. Please try again.',
++      );
++    } finally {
++      setIsReviewing(false);
++    }
++  };
++
++  if (state.status === 'loading') {
++    return <div className="page-loader">Loading submission…</div>;
++  }
++
++  if (state.status === 'not-found') {
++    return (
++      <div className="auth-error" role="alert">
++        Submission not found.
++      </div>
++    );
++  }
++
++  if (state.status === 'error') {
++    return (
++      <div className="auth-error" role="alert">
++        {state.message}
++      </div>
++    );
++  }
++
++  const { submission, student, mission } = state;
++  // BR-SUB-005: approved submissions are immutable — no further review action.
++  const canReview = submission.status !== 'approved';
++
++  return (
++    <>
++      <div className="page-header">
++        <div>
++          <span className={`status-badge status-submission-${submission.status}`}>
++            {STATUS_LABELS[submission.status]}
++          </span>
++          <h1>{mission?.title ?? 'Unknown mission'}</h1>
++          <p>
++            {student?.fullName ?? 'Unknown student'} · Submitted {formatDate(submission.submittedAt)}
++          </p>
++        </div>
++      </div>
++
++      {reviewError && (
++        <div className="auth-error" role="alert">
++          {reviewError}
++        </div>
++      )}
++
++      <div className="mission-details-card">
++        <h2>Description</h2>
++        <p>{submission.description}</p>
++      </div>
++
++      <div className="mission-details-card">
++        <h2>Screenshot</h2>
++        <a href={submission.screenshotUrl} target="_blank" rel="noreferrer" className="auth-forgot-link">
++          View screenshot ↗
++        </a>
++      </div>
++
++      {submission.feedback && (
++        <div className="mission-details-card">
++          <h2>Feedback given</h2>
++          <p>{submission.feedback}</p>
++        </div>
++      )}
++
++      {canReview && (
++        <div className="mission-details-card">
++          <h2>Review</h2>
++          <form className="mission-form" noValidate>
++            <label className="form-field">
++              <span>Feedback (optional)</span>
++              <textarea rows={4} disabled={isReviewing} {...register('feedback')} />
++              {errors.feedback && <small className="form-field-error">{errors.feedback.message}</small>}
++            </label>
++            <div className="form-actions">
++              <button
++                type="button"
++                className="danger-button"
++                disabled={isReviewing}
++                onClick={() => void handleSubmit((values) => onDecide('rejected', values))()}
++              >
++                {isReviewing ? 'Saving…' : 'Reject'}
++              </button>
++              <button
++                type="button"
++                className="primary-button"
++                disabled={isReviewing}
++                onClick={() => void handleSubmit((values) => onDecide('approved', values))()}
++              >
++                {isReviewing ? 'Saving…' : 'Approve'}
++              </button>
++            </div>
++          </form>
++        </div>
++      )}
++
++      <Link to="/admin/submissions" className="auth-back-link">
++        ← Back to review queue
++      </Link>
++    </>
++  );
++}
+diff --git a/src/features/submissions/services/SubmissionService.ts b/src/features/submissions/services/SubmissionService.ts
+index 220ba07..802de64 100644
+--- a/src/features/submissions/services/SubmissionService.ts
++++ b/src/features/submissions/services/SubmissionService.ts
+@@ -83,6 +83,12 @@ export const SubmissionService = {
+     return submission;
+   },
+ 
++  /** Admin-scoped lookup — any submission, not just the caller's own. */
++  async getSubmissionForReview(actor: AppUser, assignmentId: string): Promise<Submission | null> {
++    assertAdmin(actor);
++    return SubmissionRepository.findByAssignment(assignmentId);
++  },
++
+   /** BR-SUB-005: approved submissions are immutable — reviewing one again is rejected. */
+   async reviewSubmission(
+     actor: AppUser,
+diff --git a/src/features/submissions/validators/submission.validator.ts b/src/features/submissions/validators/submission.validator.ts
+index 28b59f0..be10f20 100644
+--- a/src/features/submissions/validators/submission.validator.ts
++++ b/src/features/submissions/validators/submission.validator.ts
+@@ -2,10 +2,6 @@ import { z } from 'zod';
+ 
+ const MAX_SCREENSHOT_BYTES = 5 * 1024 * 1024;
+ 
+-/**
+- * Matches docs/03-Features/04-Submission-System.md's Validation Rules:
+- * screenshot required/image only/max 5MB, description required/max 2000.
+- */
+ /**
+  * Matches docs/03-Features/04-Submission-System.md's Validation Rules:
+  * screenshot required/image only/max 5MB, description required/max 2000.
+@@ -36,14 +32,17 @@ export type SubmissionFormInput = z.input<typeof submissionFormSchema>;
+ export type SubmissionFormValues = z.output<typeof submissionFormSchema>;
+ 
+ /**
+- * BR-SUB-007 ("every review should contain a decision") is enforced by
+- * `decision` being a required enum, not optional. Feedback itself isn't
+- * marked mandatory anywhere in the spec, so it stays optional here —
+- * capped at the same length as the submission description for consistency.
++ * The admin review form only ever collects feedback — the decision
++ * (approved/rejected) comes from which of two separate buttons the admin
++ * clicks, not from a form field, so it has no place in this schema.
++ * BR-SUB-007 ("every review should contain a decision") is still
++ * enforced — SubmissionReviewInput requires `decision` as a mandatory
++ * TypeScript field regardless of how the UI supplies it, which is a
++ * stronger guarantee than a Zod field would add here. Feedback itself
++ * isn't marked mandatory anywhere in the spec, so it stays optional.
+  */
+-export const reviewFormSchema = z.object({
+-  decision: z.enum(['approved', 'rejected']),
++export const reviewFeedbackSchema = z.object({
+   feedback: z.string().max(2000, 'Feedback must be 2000 characters or fewer.'),
+ });
+ 
+-export type ReviewFormValues = z.infer<typeof reviewFormSchema>;
++export type ReviewFeedbackValues = z.infer<typeof reviewFeedbackSchema>;
+diff --git a/src/router/AppRouter.tsx b/src/router/AppRouter.tsx
+index 202bc32..b0fb3ad 100644
+--- a/src/router/AppRouter.tsx
++++ b/src/router/AppRouter.tsx
+@@ -8,7 +8,7 @@ import {
+   StudentMissionDetailsPage,
+   StudentMissionListPage,
+ } from '../features/missions';
+-import { AdminSubmissionQueuePage } from '../features/submissions';
++import { AdminSubmissionQueuePage, AdminSubmissionReviewPage } from '../features/submissions';
+ import { AppShell } from '../shared/layouts/AppShell';
+ import { AdminRoute } from './AdminRoute';
+ import { DashboardRedirect } from './DashboardRedirect';
+@@ -45,6 +45,7 @@ export function AppRouter() {
+               <Route path="/admin/missions/:missionId/edit" element={<MissionFormPage />} />
+               <Route path="/admin/missions/:missionId" element={<AdminMissionDetailsPage />} />
+               <Route path="/admin/submissions" element={<AdminSubmissionQueuePage />} />
++              <Route path="/admin/submissions/:assignmentId" element={<AdminSubmissionReviewPage />} />
+             </Route>
+           </Route>
+         </Route>
