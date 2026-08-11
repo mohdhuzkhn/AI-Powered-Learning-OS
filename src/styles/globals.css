@@ -625,6 +625,9 @@ a {
   font-size: 12px;
   white-space: nowrap;
 }
+.review-queue-row > .status-badge {
+  margin-left: auto;
+}
 .page-loader,
 .error-state {
   min-height: 100vh;

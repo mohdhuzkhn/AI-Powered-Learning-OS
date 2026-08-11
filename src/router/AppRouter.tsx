@@ -8,7 +8,11 @@ import {
   StudentMissionDetailsPage,
   StudentMissionListPage,
 } from '../features/missions';
-import { AdminSubmissionQueuePage, AdminSubmissionReviewPage } from '../features/submissions';
+import {
+  AdminSubmissionQueuePage,
+  AdminSubmissionReviewPage,
+  StudentSubmissionListPage,
+} from '../features/submissions';
 import { AppShell } from '../shared/layouts/AppShell';
 import { AdminRoute } from './AdminRoute';
 import { DashboardRedirect } from './DashboardRedirect';
@@ -37,6 +41,7 @@ export function AppRouter() {
               <Route path="/student/dashboard" element={<StudentDashboardPage />} />
               <Route path="/student/missions" element={<StudentMissionListPage />} />
               <Route path="/student/missions/:missionId" element={<StudentMissionDetailsPage />} />
+              <Route path="/student/submissions" element={<StudentSubmissionListPage />} />
             </Route>
             <Route element={<AdminRoute />}>
               <Route path="/admin/dashboard" element={<AdminDashboardPage />} />

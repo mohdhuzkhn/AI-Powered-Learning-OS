@@ -158,4 +158,13 @@ export const SubmissionRepository = {
     );
     return snapshot.docs.map((d) => toSubmission(d.id, d.data() as SubmissionDocument));
   },
+
+  /** All of a student's own submissions, any status — their submission history view. */
+  async listByStudent(studentId: string): Promise<Submission[]> {
+    const db = requireDb();
+    const snapshot = await getDocs(
+      query(collection(db, SUBMISSIONS_COLLECTION), where('studentId', '==', studentId)),
+    );
+    return snapshot.docs.map((d) => toSubmission(d.id, d.data() as SubmissionDocument));
+  },
 };

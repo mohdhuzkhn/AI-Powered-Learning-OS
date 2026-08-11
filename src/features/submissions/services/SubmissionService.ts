@@ -112,4 +112,10 @@ export const SubmissionService = {
     assertAdmin(actor);
     return SubmissionRepository.listPendingReview();
   },
+
+  /** A student's own submission history — no admin check, matches firestore.rules'
+   *  `resource.data.studentId == request.auth.uid`. */
+  async listMySubmissions(actor: AppUser): Promise<Submission[]> {
+    return SubmissionRepository.listByStudent(actor.uid);
+  },
 };
