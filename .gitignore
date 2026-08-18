@@ -24,4 +24,4 @@ dist-ssr
 *.sw?
 
 # AI LM OS Docs
-AI_LM_OS_Documentation/*
+AI_LM_OS_Documentation
