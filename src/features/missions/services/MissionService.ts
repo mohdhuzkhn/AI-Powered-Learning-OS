@@ -188,4 +188,9 @@ export const MissionService = {
   async getAssignmentById(assignmentId: string): Promise<MissionAssignment | null> {
     return MissionAssignmentRepository.findById(assignmentId);
   },
+
+  /** Dashboard stat — count of published (active) missions. */
+  async countPublishedMissions(): Promise<number> {
+    return MissionRepository.countByStatus('published');
+  },
 };

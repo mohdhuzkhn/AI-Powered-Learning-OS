@@ -2,6 +2,7 @@ import {
   addDoc,
   collection,
   doc,
+  getCountFromServer,
   getDoc,
   getDocs,
   orderBy,
@@ -139,5 +140,14 @@ export const MissionRepository = {
       status: 'archived' satisfies MissionStatus,
       updatedAt: serverTimestamp(),
     });
+  },
+
+  /** Count aggregation, not a full read — same pattern as UserRepository.countActiveByRole. */
+  async countByStatus(status: MissionStatus): Promise<number> {
+    const db = requireDb();
+    const snapshot = await getCountFromServer(
+      query(collection(db, MISSIONS_COLLECTION), where('status', '==', status)),
+    );
+    return snapshot.data().count;
   },
 };

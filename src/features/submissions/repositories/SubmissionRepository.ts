@@ -1,6 +1,7 @@
 import {
   collection,
   doc,
+  getCountFromServer,
   getDoc,
   getDocs,
   query,
@@ -166,5 +167,17 @@ export const SubmissionRepository = {
       query(collection(db, SUBMISSIONS_COLLECTION), where('studentId', '==', studentId)),
     );
     return snapshot.docs.map((d) => toSubmission(d.id, d.data() as SubmissionDocument));
+  },
+
+  /** Count aggregation, not a full read — same pattern as MissionRepository.countByStatus. */
+  async countPendingReview(): Promise<number> {
+    const db = requireDb();
+    const snapshot = await getCountFromServer(
+      query(
+        collection(db, SUBMISSIONS_COLLECTION),
+        where('status', '==', 'submitted' satisfies SubmissionStatus),
+      ),
+    );
+    return snapshot.data().count;
   },
 };

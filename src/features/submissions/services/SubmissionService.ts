@@ -118,4 +118,11 @@ export const SubmissionService = {
   async listMySubmissions(actor: AppUser): Promise<Submission[]> {
     return SubmissionRepository.listByStudent(actor.uid);
   },
+
+  /** Dashboard stat — count of submissions awaiting a decision. Admin-only,
+   *  same rationale as listPendingReview. */
+  async countPendingReview(actor: AppUser): Promise<number> {
+    assertAdmin(actor);
+    return SubmissionRepository.countPendingReview();
+  },
 };

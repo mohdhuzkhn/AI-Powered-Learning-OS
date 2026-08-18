@@ -6,6 +6,7 @@ import { EmptyState } from '../../../shared/components/EmptyState';
 import { MissionCard } from '../../missions/components/MissionCard';
 import { MissionService } from '../../missions/services/MissionService';
 import type { Mission } from '../../missions/types/mission.types';
+import { SubmissionService } from '../../submissions/services/SubmissionService';
 
 const PREVIEW_LIMIT = 3;
 
@@ -14,9 +15,12 @@ type MissionsState =
   | { status: 'loaded'; missions: Mission[] }
   | { status: 'error' };
 
+type CompletedState = { status: 'loading' } | { status: 'loaded'; count: number } | { status: 'error' };
+
 export function StudentDashboardPage() {
   const { user } = useAuth();
   const [missionsState, setMissionsState] = useState<MissionsState>({ status: 'loading' });
+  const [completedState, setCompletedState] = useState<CompletedState>({ status: 'loading' });
 
   useEffect(() => {
     if (!user) return;
@@ -29,6 +33,16 @@ export function StudentDashboardPage() {
       .catch((error: unknown) => {
         console.error('Failed to load assigned missions:', error);
         if (!cancelled) setMissionsState({ status: 'error' });
+      });
+
+    SubmissionService.listMySubmissions(user)
+      .then((submissions) => {
+        const count = submissions.filter((submission) => submission.status === 'approved').length;
+        if (!cancelled) setCompletedState({ status: 'loaded', count });
+      })
+      .catch((error: unknown) => {
+        console.error('Failed to load submission history:', error);
+        if (!cancelled) setCompletedState({ status: 'error' });
       });
 
     return () => {
@@ -66,8 +80,16 @@ export function StudentDashboardPage() {
         </article>
         <article>
           <span>Completed</span>
-          <strong>0</strong>
-          <small>No missions completed yet</small>
+          <strong>
+            {completedState.status === 'loaded' ? completedState.count : completedState.status === 'error' ? '—' : '…'}
+          </strong>
+          <small>
+            {completedState.status === 'error'
+              ? 'Could not load right now'
+              : completedState.status === 'loaded' && completedState.count > 0
+                ? 'Approved missions'
+                : 'No missions completed yet'}
+          </small>
         </article>
         <article>
           <span>Learning streak</span>
